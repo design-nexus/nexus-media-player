@@ -22,4 +22,8 @@ fi
 export NEXUS_SOURCE="$source_arg"
 export QML_IMPORT_PATH="$qml_root${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
 export QSG_RHI_BACKEND=opengl
+# Keep the mpv framebuffer on Quickshell's GUI render loop. This avoids a
+# driver-specific crash in libmpv's OpenGL context setup on some hybrid GPU
+# Wayland sessions when Quickshell uses its threaded scene graph.
+export QSG_RENDER_LOOP=basic
 exec quickshell --path "$shell_path"
