@@ -2,19 +2,21 @@ import QtQuick
 Rectangle {
     id: button
     property alias text: label.text
-    property var palette
+    property var colors
+    property int minWidth: 28
+    property int fontSize: 11
     signal clicked()
-    width: Math.max(46, label.implicitWidth + 20)
-    height: 30
-    radius: 4
-    color: mouse.containsMouse ? palette.accent : button.palette.surface
+    width: Math.max(minWidth, label.implicitWidth + 12)
+    height: 27
+    radius: 3
+    color: mouse.containsMouse ? colors.accent : colors.surface
     Text {
         id: label
         anchors.centerIn: parent
-        color: mouse.containsMouse ? palette.background : button.palette.foreground
-        font.family: button.palette.fontFamily
+        color: mouse.containsMouse ? button.colors.background : button.colors.foreground
+        font.family: button.colors.fontFamily
         font.bold: true
-        font.pixelSize: 10
+        font.pixelSize: button.fontSize
     }
     MouseArea { id: mouse; anchors.fill: parent; hoverEnabled: true; onClicked: button.clicked() }
 }
