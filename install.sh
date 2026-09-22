@@ -19,6 +19,7 @@ cmake --build "$source_dir/build" --parallel
 
 mkdir -p "$install_dir/qml/Nexus/Mpv" "$install_dir/lib" "$bin_dir" "$desktop_dir"
 install -m 644 "$source_dir/qml/shell.qml" "$install_dir/shell.qml"
+install -m 644 "$source_dir/qml/NexusButton.qml" "$install_dir/NexusButton.qml"
 install -m 755 "$source_dir/run" "$install_dir/run"
 install -m 644 "$source_dir/build/qml/Nexus/Mpv/qmldir" "$install_dir/qml/Nexus/Mpv/qmldir"
 install -m 755 "$source_dir/build/qml/Nexus/Mpv/libnexusmpvplugin.so" "$install_dir/qml/Nexus/Mpv/"

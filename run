@@ -1,15 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
-cd "$(dirname "$(readlink -f "$0")")"
-if [[ ! -f build/qml/Nexus/Mpv/libnexusmpvplugin.so ]]; then
-  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-  cmake --build build -j "$(nproc)"
+app_dir=$(cd -- "$(dirname -- "$(readlink -f -- "$0")")" && pwd)
+
+if [[ -f "$app_dir/build/qml/Nexus/Mpv/libnexusmpvplugin.so" ]]; then
+  qml_root="$app_dir/build/qml"
+  shell_path="$app_dir/qml/shell.qml"
+elif [[ -f "$app_dir/qml/Nexus/Mpv/libnexusmpvplugin.so" ]]; then
+  qml_root="$app_dir/qml"
+  shell_path="$app_dir/shell.qml"
+else
+  cmake -S "$app_dir" -B "$app_dir/build" -DCMAKE_BUILD_TYPE=Release
+  cmake --build "$app_dir/build" --parallel
+  qml_root="$app_dir/build/qml"
+  shell_path="$app_dir/qml/shell.qml"
 fi
+
 source_arg="${1:-}"
 if [[ -n "$source_arg" && "$source_arg" != *://* ]]; then
   source_arg="$(realpath -m -- "$source_arg")"
 fi
 export NEXUS_SOURCE="$source_arg"
-export QML_IMPORT_PATH="$PWD/build/qml${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
+export QML_IMPORT_PATH="$qml_root${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
 export QSG_RHI_BACKEND=opengl
-exec quickshell --path "$PWD/qml/shell.qml"
+exec quickshell --path "$shell_path"
