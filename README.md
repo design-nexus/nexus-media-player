@@ -28,7 +28,7 @@ To build and install the player for your user, including a desktop launcher:
 One-line install from GitHub:
 
 ```sh
-tmp=$(mktemp -d) && curl -fsSL https://github.com/design-nexus/nexus-media-player/archive/refs/heads/main.tar.gz | tar -xz -C "$tmp" && "$tmp/nexus-media-player-main/install.sh"; status=$?; rm -rf "$tmp"; exit "$status"
+curl -fsSL https://raw.githubusercontent.com/design-nexus/nexus-media-player/main/install.sh | bash
 ```
 
 For a local checkout:

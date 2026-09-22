@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-install_dir="${XDG_DATA_HOME:-$HOME/.local/share}/nexus-media-player"
-bin_dir="$HOME/.local/bin"
-desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
-
 for program in cmake pkg-config quickshell; do
     command -v "$program" >/dev/null || { echo "Missing dependency: $program" >&2; exit 1; }
 done
@@ -13,6 +8,22 @@ pkg-config --exists mpv Qt6Quick || {
     echo "Missing development packages: mpv and Qt6Quick (pkg-config)." >&2
     exit 1
 }
+
+if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" && -f "$(dirname -- "${BASH_SOURCE[0]}")/CMakeLists.txt" ]]; then
+    source_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+else
+    for program in curl tar; do
+        command -v "$program" >/dev/null || { echo "Missing dependency: $program" >&2; exit 1; }
+    done
+    tmp_dir=$(mktemp -d)
+    trap 'rm -rf "$tmp_dir"' EXIT
+    curl -fsSL https://github.com/design-nexus/nexus-media-player/archive/refs/heads/main.tar.gz | tar -xz -C "$tmp_dir" --strip-components=1
+    source_dir="$tmp_dir"
+fi
+
+install_dir="${XDG_DATA_HOME:-$HOME/.local/share}/nexus-media-player"
+bin_dir="$HOME/.local/bin"
+desktop_dir="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 
 cmake -S "$source_dir" -B "$source_dir/build" -DCMAKE_BUILD_TYPE=Release
 cmake --build "$source_dir/build" --parallel
