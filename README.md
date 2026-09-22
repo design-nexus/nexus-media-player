@@ -21,6 +21,18 @@ cmake --build build -j
 
 `./run` builds automatically on its first launch. A relative file path is resolved from the directory where you invoke `run`. Drop a file onto the window, or use the top-right menu to open a file or enter a path or URL. Press Enter to open a typed source. Sources supported by your libmpv installation can be played.
 
+## Install
+
+To build and install the player for your user, including a desktop launcher:
+
+```sh
+./install.sh
+nexus-media-player [file-or-URL]
+```
+
+The script installs under `~/.local/share/nexus-media-player` and creates a
+launcher at `~/.local/bin/nexus-media-player`. It does not require root.
+
 ## Controls
 
 | Action | Control |
