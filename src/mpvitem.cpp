@@ -62,6 +62,10 @@ MpvItem::MpvItem(QQuickItem *parent) : QQuickFramebufferObject(parent), m_handle
     m_handle->ptr = mpv_create();
     if (!m_handle->ptr) { m_error = "Could not create mpv"; return; }
     mpv_set_option_string(m_handle->ptr, "vo", "libmpv");
+    // The QML item supplies an OpenGL render context below. Explicitly select
+    // mpv's OpenGL GPU backend; otherwise recent mpv builds may choose Vulkan
+    // before the render API is created and crash during context setup.
+    mpv_set_option_string(m_handle->ptr, "gpu-api", "opengl");
     mpv_set_option_string(m_handle->ptr, "hwdec", "no");
     mpv_set_option_string(m_handle->ptr, "keep-open", "yes");
     if (mpv_initialize(m_handle->ptr) < 0) m_error = "Could not initialize mpv";
