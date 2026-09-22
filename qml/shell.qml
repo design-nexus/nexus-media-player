@@ -12,6 +12,11 @@ FloatingWindow {
     implicitHeight: 610
     title: player.title ? player.title + " · Nexus Media Player" : "Nexus Media Player"
     color: theme.background
+    onClosed: Qt.quit()
+    Connections {
+        target: Quickshell
+        function onLastWindowClosed() { Qt.quit() }
+    }
 
     property bool menuOpen: false
     property bool urlOpen: false
