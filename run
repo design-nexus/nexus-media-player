@@ -26,4 +26,6 @@ export QSG_RHI_BACKEND=opengl
 # driver-specific crash in libmpv's OpenGL context setup on some hybrid GPU
 # Wayland sessions when Quickshell uses its threaded scene graph.
 export QSG_RENDER_LOOP=basic
+# libmpv requires the numeric locale to be exactly C during initialization.
+export LC_NUMERIC=C
 exec quickshell --path "$shell_path"
