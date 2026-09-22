@@ -15,7 +15,12 @@ static void *getProc(void *, const char *name) {
 class MpvRenderer : public QQuickFramebufferObject::Renderer {
 public:
     MpvRenderer(std::shared_ptr<MpvHandle> handle, QPointer<MpvItem> item)
-        : m_handle(std::move(handle)), m_item(item) {
+        : m_handle(std::move(handle)), m_item(item) {}
+
+    QOpenGLFramebufferObject *createFramebufferObject(const QSize &size) override {
+        if (m_context)
+            return QQuickFramebufferObject::Renderer::createFramebufferObject(size);
+
         mpv_opengl_init_params gl{getProc, nullptr};
         const char *api = MPV_RENDER_API_TYPE_OPENGL;
         mpv_render_param params[] = {{MPV_RENDER_PARAM_API_TYPE, const_cast<char *>(api)},
@@ -26,6 +31,7 @@ public:
             mpv_render_context_set_update_callback(m_context, &MpvRenderer::onUpdate, this);
             if (m_item) QMetaObject::invokeMethod(m_item, [item = m_item] { if (item) item->rendererReady(); }, Qt::QueuedConnection);
         }
+        return QQuickFramebufferObject::Renderer::createFramebufferObject(size);
     }
     ~MpvRenderer() override {
         if (m_context) {
