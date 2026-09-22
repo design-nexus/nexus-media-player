@@ -136,14 +136,30 @@ FloatingWindow {
                 Rectangle { anchors.fill: parent; color: "#09090e" }
                 MpvItem { id: player; anchors.fill: parent }
                 MouseArea {
+                    id: videoMouse
                     anchors.fill: parent
                     hoverEnabled: true
                     acceptedButtons: Qt.LeftButton
+                    property double lastDoubleClickAt: 0
+                    Timer {
+                        id: singleClickTimer
+                        interval: Qt.styleHints.mouseDoubleClickInterval
+                        onTriggered: player.togglePause()
+                    }
                     onPositionChanged: win.revealUi()
                     onClicked: {
+                        if (Date.now() - lastDoubleClickAt < Qt.styleHints.mouseDoubleClickInterval) return
                         if (win.menuOpen || win.urlOpen || win.volumeOpen) {
                             win.menuOpen = false; win.urlOpen = false; win.volumeOpen = false
-                        } else player.togglePause()
+                        } else singleClickTimer.restart()
+                        keyboard.forceActiveFocus()
+                        win.revealUi()
+                    }
+                    onDoubleClicked: {
+                        lastDoubleClickAt = Date.now()
+                        singleClickTimer.stop()
+                        win.menuOpen = false; win.urlOpen = false; win.volumeOpen = false
+                        win.fullscreen = !win.fullscreen
                         keyboard.forceActiveFocus()
                         win.revealUi()
                     }

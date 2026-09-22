@@ -25,10 +25,10 @@ cmake --build build -j
 
 | Action | Control |
 | --- | --- |
-| Play or pause | Video click, Space, or play button |
+| Play or pause | Single click the video, Space, or play button |
 | Seek | Seek bar, Left/Right arrows (five seconds), or horizontal two finger scroll over the video or seek bar |
 | Volume and mute | Click the volume icon for a vertical slider and mute button, or press M |
-| Fullscreen | F, the fullscreen icon, or Escape to leave fullscreen |
+| Fullscreen | Double click the video, F, the fullscreen icon, or Escape to leave fullscreen |
 
 Fullscreen controls hide after three seconds and reappear when you move the pointer or use a shortcut. Arrow keys retain their normal editing behavior while the source field has focus. The player reads the active Omarchy `colors.toml` palette and fontconfig monospace font while running, so changing the Omarchy theme or monospace font updates the interface.
 
