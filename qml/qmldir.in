@@ -1,0 +1,2 @@
+module Nexus.Mpv
+plugin nexusmpvplugin

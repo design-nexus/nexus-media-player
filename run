@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$(readlink -f "$0")")"
+if [[ ! -f build/qml/Nexus/Mpv/libnexusmpvplugin.so ]]; then
+  cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+  cmake --build build -j "$(nproc)"
+fi
+source_arg="${1:-}"
+if [[ -n "$source_arg" && "$source_arg" != *://* ]]; then
+  source_arg="$(realpath -m -- "$source_arg")"
+fi
+export NEXUS_SOURCE="$source_arg"
+export QML_IMPORT_PATH="$PWD/build/qml${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
+export QSG_RHI_BACKEND=opengl
+exec quickshell --path "$PWD/qml/shell.qml"
