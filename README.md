@@ -46,7 +46,7 @@ curl -fsSL https://raw.githubusercontent.com/design-nexus/nexus-media-player/mai
 ```
 
 This installs GTK 4, mpv and ffmpeg if they're missing, builds with Cargo, and installs
-`nexus-media-player` to `~/.local/bin` along with a launcher entry. Add `-s -- --default`
+`media-player` to `~/.local/bin` along with a launcher entry. Add `-s -- --default`
 after `bash` to also make it the default app for video files.
 
 To remove it, run the same line with `uninstall.sh` in place of `install.sh`. Add
@@ -56,7 +56,7 @@ files are never touched.
 ## Usage
 
 ```
-nexus-media-player [OPTIONS] [FILES…]
+media-player [OPTIONS] [FILES…]
 ```
 
 | Option | What |

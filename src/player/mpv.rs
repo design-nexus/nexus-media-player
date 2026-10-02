@@ -223,7 +223,7 @@ impl Mpv {
             // SAFETY: valid handle and C strings.
             let r = unsafe { mpv_set_option_string(ctx, k.as_ptr(), v.as_ptr()) };
             if r < 0 {
-                eprintln!("nexus-media-player: mpv option {}: {}", k.to_string_lossy(), error_string(r));
+                eprintln!("media-player: mpv option {}: {}", k.to_string_lossy(), error_string(r));
             }
         }
         // SAFETY: valid handle.

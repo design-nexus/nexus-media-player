@@ -1,5 +1,8 @@
 # Nexus Media Player — notes for working on this repo
 
+- The command is `media-player`; everything else (crate, config/data/cache folders,
+  MPRIS name) is `nexus-media-player`.
+
 - GTK4 (gtk4-rs 0.11) + Rust + libmpv (hand-written FFI, `player/mpv.rs`, links
   `libmpv.so.2`). No libadwaita. Follows `~/Projects/STYLE.md`; theme, window, widgets,
   stylesheet, queue, playlists and MPRIS started as copies of Nexus Music
@@ -28,7 +31,7 @@
 - Widgets subscribe with `player::subscribe(&widget, …)` and `store::subscribe`. Never
   hold a `with(...)` borrow while calling `emit`.
 - Checks: `cargo clippy --all-targets -- -D warnings`, `cargo test` (one test starts
-  libmpv). Layout check: `NMP_SNAPSHOT=/tmp/x.png nexus-media-player --section movies`
+  libmpv). Layout check: `NMP_SNAPSHOT=/tmp/x.png media-player --section movies`
   (quit any running instance first; it's single-instance). Snapshots render offscreen,
   which GL textures don't survive, so they skip video; check video in a real window
   (`grim -g` on the window's geometry from `hyprctl clients -j`). For tests, point

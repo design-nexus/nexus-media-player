@@ -532,5 +532,5 @@ pub fn build(page: &Page) {
     ] {
         g.add(&widgets::row(what, "", Some(widgets::key_caps(keys).upcast_ref())));
     }
-    g.note("Media keys work through MPRIS. From a terminal or a binding: <tt>nexus-media-player --play-pause</tt>, <tt>--next</tt>, <tt>--previous</tt>.");
+    g.note("Media keys work through MPRIS. From a terminal or a binding: <tt>media-player --play-pause</tt>, <tt>--next</tt>, <tt>--previous</tt>.");
 }

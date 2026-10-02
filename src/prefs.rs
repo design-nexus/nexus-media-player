@@ -132,7 +132,7 @@ fn load() -> Prefs {
             // defaults are saved over it.
             let backup = file.with_extension("toml.bak");
             let _ = std::fs::copy(&file, &backup);
-            eprintln!("nexus-media-player: {} couldn't be read ({e}); kept a copy as {}", file.display(), backup.display());
+            eprintln!("media-player: {} couldn't be read ({e}); kept a copy as {}", file.display(), backup.display());
             BROKEN.with(|b| b.set(true));
             Prefs::default()
         }

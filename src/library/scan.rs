@@ -299,7 +299,7 @@ pub fn run(roots: Vec<PathBuf>, frames: bool, send: impl Fn(Progress)) {
         return;
     }
     if frames && let Err(e) = grab_frames(&send) {
-        eprintln!("nexus-media-player: frames: {e}");
+        eprintln!("media-player: frames: {e}");
     }
 }
 

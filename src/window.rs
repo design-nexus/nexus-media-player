@@ -686,7 +686,7 @@ fn refresh_playlists() {
 /// Show a short message at the bottom of the window.
 pub fn toast(message: &str) {
     let Some(ui) = ui() else {
-        eprintln!("nexus-media-player: {message}");
+        eprintln!("media-player: {message}");
         return;
     };
     let overlay = ui.borrow().overlay.clone();
