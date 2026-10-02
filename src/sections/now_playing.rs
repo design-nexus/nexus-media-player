@@ -1,0 +1,680 @@
+//! Now playing: the video, with controls that float over it and fade away
+//! while it plays. Click to pause, double-click for fullscreen, swipe sideways
+//! on a touchpad to seek and up or down for the volume.
+
+use crate::library::Kind;
+use crate::library::art::Art;
+use crate::player::{self, Event, State, TrackKind, video};
+use crate::seekbar::SeekBar;
+use crate::widgets::{self, Page};
+use crate::{fmt, prefs, window};
+use gtk::prelude::*;
+use gtk::{gdk, gio, glib};
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
+use std::time::{Duration, Instant};
+
+/// Touchpad seeking: seconds per unit of horizontal scroll.
+const SECS_PER_UNIT: f64 = 0.3;
+const HIDE_AFTER: Duration = Duration::from_millis(2500);
+
+thread_local! {
+    static FLASH: RefCell<Option<(gtk::Label, Rc<Cell<u32>>)>> = const { RefCell::new(None) };
+}
+
+/// Show a short message over the video (seek, volume, speed).
+pub fn flash(text: &str) {
+    FLASH.with(|f| {
+        let Some((label, generation)) = f.borrow().clone() else { return };
+        if !label.is_mapped() {
+            return;
+        }
+        label.set_text(text);
+        label.set_visible(true);
+        let g = generation.get().wrapping_add(1);
+        generation.set(g);
+        glib::timeout_add_local_once(Duration::from_millis(1100), move || {
+            if generation.get() == g {
+                label.set_visible(false);
+            }
+        });
+    });
+}
+
+fn volume_icon(v: f64, muted: bool) -> &'static str {
+    if muted || v <= 0.001 {
+        "audio-volume-muted-symbolic"
+    } else if v < 0.34 {
+        "audio-volume-low-symbolic"
+    } else if v < 0.67 {
+        "audio-volume-medium-symbolic"
+    } else {
+        "audio-volume-high-symbolic"
+    }
+}
+
+/// A row in a track popover: a check when picked.
+fn choice(label: &str, detail: &str, selected: bool, on: impl Fn() + 'static) -> gtk::Button {
+    let b = gtk::Button::new();
+    b.add_css_class("flat");
+    b.add_css_class("menu-item");
+    let row = widgets::hbox(10);
+    let check = gtk::Image::from_icon_name("object-select-symbolic");
+    check.set_opacity(if selected { 1.0 } else { 0.0 });
+    check.add_css_class("accent-text");
+    row.append(&check);
+    let l = widgets::label(label, "");
+    l.set_hexpand(true);
+    l.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    l.set_max_width_chars(32);
+    row.append(&l);
+    if !detail.is_empty() {
+        let d = widgets::label(detail, "dim");
+        d.add_css_class("mono");
+        row.append(&d);
+    }
+    b.set_child(Some(&row));
+    b.connect_clicked(move |_| on());
+    b
+}
+
+fn clear(b: &gtk::Box) {
+    while let Some(c) = b.first_child() {
+        b.remove(&c);
+    }
+}
+
+/// A button that opens a popover filled fresh each time.
+fn menu_button(icon: &str, tooltip: &str, fill: impl Fn(&gtk::Box, &gtk::Popover) + 'static) -> gtk::MenuButton {
+    let mb = gtk::MenuButton::new();
+    mb.set_icon_name(icon);
+    mb.set_tooltip_text(Some(tooltip));
+    mb.add_css_class("flat");
+    mb.add_css_class("osd-button");
+    mb.set_focus_on_click(false);
+    let pop = gtk::Popover::new();
+    pop.add_css_class("menu-popover");
+    let content = widgets::vbox(1);
+    pop.set_child(Some(&content));
+    mb.set_popover(Some(&pop));
+    let p2 = pop.clone();
+    pop.connect_show(move |_| {
+        clear(&content);
+        fill(&content, &p2);
+    });
+    mb
+}
+
+fn speed_menu(content: &gtk::Box, pop: &gtk::Popover) {
+    content.append(&widgets::label("SPEED", "popover-heading"));
+    let now = player::speed();
+    for s in player::SPEEDS {
+        let pop = pop.clone();
+        content.append(&choice(
+            &format!("{}×", fmt::speed(s)),
+            if s == 1.0 { "normal" } else { "" },
+            (now - s).abs() < 0.01,
+            move || {
+                player::set_speed(s);
+                pop.popdown();
+            },
+        ));
+    }
+}
+
+fn audio_menu(content: &gtk::Box, pop: &gtk::Popover) {
+    content.append(&widgets::label("SOUND", "popover-heading"));
+    let tracks = player::tracks(TrackKind::Audio);
+    if tracks.is_empty() {
+        content.append(&widgets::label("No sound", "dim"));
+    }
+    for t in tracks {
+        let pop = pop.clone();
+        let id = t.id;
+        content.append(&choice(&t.label(), &t.detail(), t.selected, move || {
+            player::set_audio(id);
+            pop.popdown();
+        }));
+    }
+}
+
+fn subtitle_menu(content: &gtk::Box, pop: &gtk::Popover) {
+    content.append(&widgets::label("SUBTITLES", "popover-heading"));
+    let tracks = player::tracks(TrackKind::Sub);
+    let any = tracks.iter().any(|t| t.selected);
+    let p = pop.clone();
+    content.append(&choice("Off", "", !any, move || {
+        player::set_subtitle(0);
+        p.popdown();
+    }));
+    for t in tracks {
+        let pop = pop.clone();
+        let id = t.id;
+        content.append(&choice(&t.label(), &t.detail(), t.selected, move || {
+            player::set_subtitle(id);
+            pop.popdown();
+        }));
+    }
+    let load = gtk::Button::with_label("Load a subtitle file…");
+    load.add_css_class("flat");
+    load.add_css_class("menu-item");
+    if let Some(l) = load.child().and_downcast::<gtk::Label>() {
+        l.set_xalign(0.0);
+    }
+    let p = pop.clone();
+    load.connect_clicked(move |_| {
+        p.popdown();
+        choose_subtitle_file();
+    });
+    content.append(&load);
+    content.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+
+    // Delay: − value +
+    let delay = widgets::hbox(6);
+    delay.add_css_class("menu-row");
+    let l = widgets::label("Delay", "");
+    l.set_hexpand(true);
+    delay.append(&l);
+    let minus = widgets::icon_button("list-remove-symbolic", "Earlier (Z)");
+    let value = widgets::label(&fmt::delay(player::sub_delay()), "value-readout");
+    value.set_width_chars(7);
+    value.set_xalign(0.5);
+    let plus = widgets::icon_button("list-add-symbolic", "Later (X)");
+    let v = value.clone();
+    minus.connect_clicked(move |_| {
+        player::set_sub_delay(player::sub_delay() - 0.1);
+        v.set_text(&fmt::delay(player::sub_delay()));
+    });
+    let v = value.clone();
+    plus.connect_clicked(move |_| {
+        player::set_sub_delay(player::sub_delay() + 0.1);
+        v.set_text(&fmt::delay(player::sub_delay()));
+    });
+    delay.append(&minus);
+    delay.append(&value);
+    delay.append(&plus);
+    content.append(&delay);
+
+    // Size
+    let size = widgets::hbox(6);
+    size.add_css_class("menu-row");
+    size.append(&widgets::label("Size", ""));
+    let scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.5, 2.5, 0.05);
+    scale.set_draw_value(false);
+    scale.set_hexpand(true);
+    scale.set_size_request(120, -1);
+    scale.set_value(prefs::get().sub_scale);
+    let readout = widgets::label(&format!("{:.0}%", prefs::get().sub_scale * 100.0), "value-readout");
+    readout.set_width_chars(5);
+    readout.set_xalign(1.0);
+    let r = readout.clone();
+    scale.connect_value_changed(move |s| {
+        player::set_sub_scale(s.value());
+        r.set_text(&format!("{:.0}%", s.value() * 100.0));
+    });
+    size.append(&scale);
+    size.append(&readout);
+    content.append(&size);
+}
+
+/// Pick a subtitle file for the playing video.
+pub fn choose_subtitle_file() {
+    let Some(v) = player::current() else { return };
+    let dialog = gtk::FileDialog::builder().title("Load subtitles").modal(true).build();
+    if let Some(dir) = v.path.parent() {
+        dialog.set_initial_folder(Some(&gio::File::for_path(dir)));
+    }
+    let filter = gtk::FileFilter::new();
+    filter.set_name(Some("Subtitles"));
+    for ext in ["srt", "ass", "ssa", "vtt", "sub", "idx", "sup"] {
+        filter.add_suffix(ext);
+    }
+    let filters = gio::ListStore::new::<gtk::FileFilter>();
+    filters.append(&filter);
+    dialog.set_filters(Some(&filters));
+    dialog.open(window::window().as_ref(), gio::Cancellable::NONE, |res| {
+        if let Ok(file) = res
+            && let Some(path) = file.path()
+        {
+            player::add_subtitle(&path);
+        }
+    });
+}
+
+#[derive(Default)]
+struct Swipe {
+    active: bool,
+    /// Some(true) when seeking sideways, Some(false) for volume.
+    sideways: Option<bool>,
+    dx: f64,
+    dy: f64,
+    start_pos: f64,
+    start_vol: f64,
+    target: f64,
+    last_seek: Option<Instant>,
+    generation: u32,
+}
+
+fn finish_swipe(swipe: &RefCell<Swipe>) {
+    let s = std::mem::take(&mut *swipe.borrow_mut());
+    if s.active && s.sideways == Some(true) {
+        player::seek(s.target);
+    }
+    swipe.borrow_mut().generation = s.generation;
+}
+
+fn on_swipe(swipe: &Rc<RefCell<Swipe>>, dx: f64, dy: f64) {
+    {
+        let mut s = swipe.borrow_mut();
+        if !s.active {
+            *s = Swipe {
+                active: true,
+                start_pos: player::position(),
+                start_vol: prefs::get().volume,
+                generation: s.generation,
+                ..Default::default()
+            };
+        }
+        s.dx += dx;
+        s.dy += dy;
+        if s.sideways.is_none() && (s.dx.abs() > 6.0 || s.dy.abs() > 6.0) {
+            s.sideways = Some(s.dx.abs() >= s.dy.abs());
+        }
+    }
+    let (sideways, sdx, sdy, start_pos, start_vol, last) = {
+        let s = swipe.borrow();
+        (s.sideways, s.dx, s.dy, s.start_pos, s.start_vol, s.last_seek)
+    };
+    match sideways {
+        Some(true) if player::current().is_some() => {
+            let dir = if prefs::get().swipe_reverse { -1.0 } else { 1.0 };
+            let d = player::duration();
+            let target = (start_pos + dir * sdx * SECS_PER_UNIT).clamp(0.0, if d > 0.0 { d - 0.5 } else { f64::MAX });
+            swipe.borrow_mut().target = target;
+            let delta = target - start_pos;
+            let sign = if delta >= 0.0 { "+" } else { "−" };
+            flash(&format!("{sign}{} · {}", fmt::time(delta.abs()), fmt::time(target)));
+            if last.is_none_or(|t| t.elapsed() > Duration::from_millis(150)) {
+                swipe.borrow_mut().last_seek = Some(Instant::now());
+                player::seek_fast(target);
+            }
+        }
+        Some(false) => {
+            let v = (start_vol - sdy * 0.004).clamp(0.0, 1.0);
+            player::set_volume(v);
+            if prefs::get().muted && v > 0.0 {
+                player::set_muted(false);
+            }
+            flash(&format!("Volume {:.0}%", v * 100.0));
+        }
+        _ => {}
+    }
+    // Finish shortly after the fingers stop, in case no scroll-end comes.
+    let g = {
+        let mut s = swipe.borrow_mut();
+        s.generation = s.generation.wrapping_add(1);
+        s.generation
+    };
+    let sw = swipe.clone();
+    glib::timeout_add_local_once(Duration::from_millis(300), move || {
+        if sw.borrow().generation == g {
+            finish_swipe(&sw);
+        }
+    });
+}
+
+pub fn build(page: &Page) {
+    page.body.add_css_class("player-page");
+    if let Some(e) = player::engine_error() {
+        let b = widgets::banner(
+            &format!(
+                "Videos can't play: mpv didn't start (<tt>{}</tt>). Install <b>mpv</b> and open Nexus Media Player again.",
+                gtk::glib::markup_escape_text(&e)
+            ),
+            true,
+        );
+        b.set_margin_top(16);
+        b.set_margin_start(16);
+        b.set_margin_end(16);
+        page.body.append(&b);
+    }
+    let overlay = gtk::Overlay::new();
+    overlay.add_css_class("player-stage");
+    overlay.set_vexpand(true);
+    overlay.set_hexpand(true);
+    overlay.set_overflow(gtk::Overflow::Hidden);
+
+    // ----- The picture -----
+    let stage = gtk::Stack::new();
+    stage.set_transition_type(gtk::StackTransitionType::Crossfade);
+    stage.set_transition_duration(if prefs::get().reduce_motion { 0 } else { 160 });
+    let picture = gtk::Picture::for_paintable(&video::paintable());
+    picture.set_content_fit(gtk::ContentFit::Contain);
+    picture.set_can_shrink(true);
+    picture.set_hexpand(true);
+    picture.set_vexpand(true);
+    picture.add_css_class("video-surface");
+    stage.add_named(&picture, Some("video"));
+    // Audio-only files: the poster.
+    let still = widgets::vbox(14);
+    still.set_valign(gtk::Align::Center);
+    still.set_halign(gtk::Align::Center);
+    let art = Art::poster(220);
+    art.root.set_halign(gtk::Align::Center);
+    still.append(&art.root);
+    stage.add_named(&still, Some("still"));
+    let empty = widgets::empty_state(
+        "nmp-video-symbolic",
+        "Nothing playing",
+        "Pick a movie or an episode, or open a file with <b>Ctrl+O</b>.",
+        Some(("Browse movies", Box::new(|| window::navigate("movies")))),
+    );
+    stage.add_named(&empty, Some("empty"));
+    overlay.set_child(Some(&stage));
+
+    // ----- Top: what's playing -----
+    let top = widgets::vbox(2);
+    top.add_css_class("osd-top");
+    top.set_valign(gtk::Align::Start);
+    let title = widgets::label("", "osd-title");
+    title.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    let subtitle = widgets::label("", "osd-subtitle");
+    subtitle.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    top.append(&title);
+    top.append(&subtitle);
+    overlay.add_overlay(&top);
+
+    // ----- Middle: buffering and messages -----
+    let spinner = gtk::Spinner::new();
+    spinner.set_size_request(40, 40);
+    spinner.set_halign(gtk::Align::Center);
+    spinner.set_valign(gtk::Align::Center);
+    spinner.set_can_target(false);
+    spinner.set_visible(false);
+    overlay.add_overlay(&spinner);
+    let flash_label = widgets::label("", "osd-flash");
+    flash_label.add_css_class("mono");
+    flash_label.set_halign(gtk::Align::Center);
+    flash_label.set_valign(gtk::Align::Start);
+    flash_label.set_can_target(false);
+    flash_label.set_visible(false);
+    overlay.add_overlay(&flash_label);
+    FLASH.with(|f| *f.borrow_mut() = Some((flash_label, Rc::new(Cell::new(0)))));
+
+    // ----- Bottom: controls -----
+    let controls = widgets::vbox(6);
+    controls.add_css_class("osd-controls");
+    controls.set_valign(gtk::Align::End);
+    let seek = SeekBar::new();
+    controls.append(&seek.root);
+    let row = widgets::hbox(4);
+    let prev = widgets::icon_button("media-skip-backward-symbolic", "Previous (Ctrl+←)");
+    let back = widgets::icon_button("media-seek-backward-symbolic", "Back (←)");
+    let play = gtk::Button::from_icon_name("media-playback-start-symbolic");
+    play.add_css_class("play-button");
+    let fwd = widgets::icon_button("media-seek-forward-symbolic", "Forward (→)");
+    let next = widgets::icon_button("media-skip-forward-symbolic", "Next (Ctrl+→)");
+    for b in [&prev, &back, &play, &fwd, &next] {
+        b.set_focus_on_click(false);
+        b.add_css_class("osd-button");
+        row.append(b);
+    }
+    let p = prefs::get();
+    let mute = widgets::icon_button(volume_icon(p.volume, p.muted), "Mute (M)");
+    mute.add_css_class("osd-button");
+    mute.set_focus_on_click(false);
+    mute.set_margin_start(10);
+    row.append(&mute);
+    let volume = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 1.0, 0.01);
+    volume.set_draw_value(false);
+    volume.set_value(p.volume);
+    volume.set_size_request(96, -1);
+    volume.add_css_class("volume");
+    volume.set_focus_on_click(false);
+    row.append(&volume);
+    let spacer = widgets::hbox(0);
+    spacer.set_hexpand(true);
+    row.append(&spacer);
+    let speed_label = widgets::label("", "osd-speed");
+    speed_label.add_css_class("mono");
+    row.append(&speed_label);
+    let speed = menu_button("nmp-speed-symbolic", "Speed ([ and ])", speed_menu);
+    let audio = menu_button("nmp-audio-track-symbolic", "Sound track (A)", audio_menu);
+    let subs = menu_button("nmp-subtitles-symbolic", "Subtitles (S)", subtitle_menu);
+    let full = widgets::icon_button("view-fullscreen-symbolic", "Fullscreen (F)");
+    full.add_css_class("osd-button");
+    full.set_focus_on_click(false);
+    row.append(&speed);
+    row.append(&audio);
+    row.append(&subs);
+    row.append(&full);
+    controls.append(&row);
+    overlay.add_overlay(&controls);
+    page.body.append(&overlay);
+
+    // ----- Wiring -----
+    play.connect_clicked(|_| player::toggle());
+    prev.connect_clicked(|_| player::previous());
+    next.connect_clicked(|_| player::next());
+    back.connect_clicked(|_| player::seek_by(-prefs::get().skip_short));
+    fwd.connect_clicked(|_| player::seek_by(prefs::get().skip_short));
+    full.connect_clicked(|_| window::toggle_fullscreen());
+    if let Some(w) = window::window() {
+        let weak = full.downgrade();
+        w.connect_fullscreened_notify(move |w| {
+            if let Some(b) = weak.upgrade() {
+                let on = w.is_fullscreen();
+                b.set_icon_name(if on { "view-restore-symbolic" } else { "view-fullscreen-symbolic" });
+                b.set_tooltip_text(Some(if on { "Leave fullscreen (F or Esc)" } else { "Fullscreen (F)" }));
+            }
+        });
+    }
+    mute.connect_clicked(|_| player::set_muted(!prefs::get().muted));
+    volume.connect_change_value(|_, _, v| {
+        let v = v.clamp(0.0, 1.0);
+        player::set_volume(v);
+        if prefs::get().muted && v > 0.0 {
+            player::set_muted(false);
+        }
+        glib::Propagation::Proceed
+    });
+
+    // Controls fade out while playing and the pointer rests.
+    let idle_gen: Rc<Cell<u32>> = Rc::default();
+    let over_controls = Rc::new(Cell::new(false));
+    let menus = [speed.clone(), audio.clone(), subs.clone()];
+    let wake: Rc<dyn Fn()> = {
+        let (overlay, top, controls, idle_gen, over_controls) =
+            (overlay.clone(), top.clone(), controls.clone(), idle_gen.clone(), over_controls.clone());
+        Rc::new(move || {
+            for w in [top.upcast_ref::<gtk::Widget>(), controls.upcast_ref()] {
+                w.remove_css_class("idle");
+                w.set_can_target(true);
+            }
+            overlay.set_cursor(None);
+            let g = idle_gen.get().wrapping_add(1);
+            idle_gen.set(g);
+            let (overlay, top, controls, idle_gen, over, menus) =
+                (overlay.clone(), top.clone(), controls.clone(), idle_gen.clone(), over_controls.clone(), menus.clone());
+            glib::timeout_add_local_once(HIDE_AFTER, move || {
+                // Stay while a menu is open.
+                let busy_menu = menus.iter().any(|m| m.is_active());
+                if idle_gen.get() != g || over.get() || busy_menu || player::state() != State::Playing {
+                    return;
+                }
+                for w in [top.upcast_ref::<gtk::Widget>(), controls.upcast_ref()] {
+                    w.add_css_class("idle");
+                    w.set_can_target(false);
+                }
+                overlay.set_cursor_from_name(Some("none"));
+            });
+        })
+    };
+    let motion = gtk::EventControllerMotion::new();
+    let last_xy = Rc::new(Cell::new((0.0, 0.0)));
+    let w = wake.clone();
+    motion.connect_motion(move |_, x, y| {
+        // Some compositors send motion with no movement; ignore those.
+        let (lx, ly) = last_xy.get();
+        if (x - lx).abs() + (y - ly).abs() > 1.0 {
+            last_xy.set((x, y));
+            w();
+        }
+    });
+    overlay.add_controller(motion);
+    let over = gtk::EventControllerMotion::new();
+    let o = over_controls.clone();
+    over.connect_enter(move |_, _, _| o.set(true));
+    let o = over_controls.clone();
+    over.connect_leave(move |_| o.set(false));
+    controls.add_controller(over);
+
+    // Click to pause, double-click for fullscreen.
+    let click = gtk::GestureClick::new();
+    let pending: Rc<Cell<u32>> = Rc::default();
+    let p = pending.clone();
+    click.connect_pressed(move |g, n, _, _| {
+        if n == 2 {
+            p.set(p.get().wrapping_add(1));
+            window::toggle_fullscreen();
+            g.set_state(gtk::EventSequenceState::Claimed);
+        }
+    });
+    let p = pending.clone();
+    click.connect_released(move |_, n, _, _| {
+        if n != 1 || player::current().is_none() {
+            return;
+        }
+        let g = p.get().wrapping_add(1);
+        p.set(g);
+        let p2 = p.clone();
+        let delay = gtk::Settings::default().map_or(400, |s| s.gtk_double_click_time()) as u64;
+        glib::timeout_add_local_once(Duration::from_millis(delay.min(400)), move || {
+            if p2.get() == g {
+                player::toggle();
+            }
+        });
+    });
+    stage.add_controller(click);
+
+    // Touchpad: sideways seeks, up/down sets the volume. A mouse wheel
+    // changes the volume, or skips when tilted.
+    let swipe: Rc<RefCell<Swipe>> = Rc::default();
+    let scroll = gtk::EventControllerScroll::new(gtk::EventControllerScrollFlags::BOTH_AXES);
+    let sw = swipe.clone();
+    let w = wake.clone();
+    scroll.connect_scroll(move |c, dx, dy| {
+        w();
+        if c.unit() == gdk::ScrollUnit::Wheel {
+            if dy != 0.0 {
+                let v = (prefs::get().volume - dy * 0.05).clamp(0.0, 1.0);
+                player::set_volume(v);
+                flash(&format!("Volume {:.0}%", v * 100.0));
+            } else if dx != 0.0 {
+                player::seek_by(prefs::get().skip_short * dx.signum());
+            }
+            return glib::Propagation::Stop;
+        }
+        on_swipe(&sw, dx, dy);
+        glib::Propagation::Stop
+    });
+    let sw = swipe.clone();
+    scroll.connect_scroll_end(move |_| finish_swipe(&sw));
+    overlay.add_controller(scroll);
+
+    // ----- Following the player -----
+    let refresh = {
+        let top = top.clone();
+        let (stage, art, title, subtitle, play, spinner, mute, volume, speed_label, prev, next, wake) = (
+            stage.clone(),
+            art.clone(),
+            title.clone(),
+            subtitle.clone(),
+            play.clone(),
+            spinner.clone(),
+            mute.clone(),
+            volume.clone(),
+            speed_label.clone(),
+            prev.clone(),
+            next.clone(),
+            wake.clone(),
+        );
+        let (subs, audio) = (subs.clone(), audio.clone());
+        move |e: Event| match e {
+            Event::Track | Event::Video => {
+                let cur = player::current();
+                let name = if player::has_video() || video::paintable().has_frame() {
+                    "video"
+                } else if cur.is_some() {
+                    "still"
+                } else {
+                    "empty"
+                };
+                stage.set_visible_child_name(name);
+                match &cur {
+                    Some(v) => {
+                        art.set_key(v.card_art());
+                        match v.kind {
+                            Kind::Episode => {
+                                title.set_text(&v.show);
+                                subtitle.set_text(&format!("{} · {}", v.code(), v.episode_name()));
+                            }
+                            _ => {
+                                title.set_text(&v.title);
+                                subtitle.set_text(&v.year.map(|y| y.to_string()).unwrap_or_default());
+                            }
+                        }
+                    }
+                    None => {
+                        title.set_text("");
+                        subtitle.set_text("");
+                    }
+                }
+                top.set_visible(cur.is_some());
+                prev.set_sensitive(player::can_previous());
+                next.set_sensitive(player::can_next());
+            }
+            Event::State => {
+                let playing = player::state() == State::Playing;
+                play.set_icon_name(if playing { "media-playback-pause-symbolic" } else { "media-playback-start-symbolic" });
+                play.set_tooltip_text(Some(if playing { "Pause (Space)" } else { "Play (Space)" }));
+                wake();
+            }
+            Event::Queue => {
+                prev.set_sensitive(player::can_previous());
+                next.set_sensitive(player::can_next());
+            }
+            Event::Buffering => spinner.set_visible(player::buffering()),
+            Event::Options => {
+                let p = prefs::get();
+                mute.set_icon_name(volume_icon(p.volume, p.muted));
+                mute.set_tooltip_text(Some(if p.muted { "Unmute (M)" } else { "Mute (M)" }));
+                if (volume.value() - p.volume).abs() > 0.005 {
+                    volume.set_value(p.volume);
+                }
+                let s = player::speed();
+                speed_label.set_text(&if (s - 1.0).abs() > 0.001 { format!("{}×", fmt::speed(s)) } else { String::new() });
+            }
+            Event::Tracks => {
+                let has_subs = !player::tracks(TrackKind::Sub).is_empty();
+                subs.remove_css_class("dim");
+                if !has_subs {
+                    subs.add_css_class("dim");
+                }
+                audio.set_sensitive(player::tracks(TrackKind::Audio).len() > 1);
+            }
+            Event::Position | Event::Seeked => {}
+        }
+    };
+    for e in [Event::Track, Event::State, Event::Options, Event::Tracks, Event::Buffering] {
+        refresh(e);
+    }
+    spinner.connect_visible_notify(|s| s.set_spinning(s.is_visible()));
+    player::subscribe(&overlay, refresh);
+    let stage2 = stage.clone();
+    video::paintable().connect_invalidate_contents(move |p| {
+        if p.has_frame() && stage2.visible_child_name().as_deref() != Some("video") {
+            stage2.set_visible_child_name("video");
+        }
+    });
+}

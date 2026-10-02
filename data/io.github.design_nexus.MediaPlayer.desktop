@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Nexus Media Player
+GenericName=Video Player
+Comment=Watch your movies and TV shows, with resume, subtitles and playlists
+Exec=nexus-media-player %U
+Icon=io.github.design_nexus.MediaPlayer
+Terminal=false
+Categories=AudioVideo;Video;Player;GTK;
+Keywords=video;movie;movies;tv;shows;episodes;player;subtitles;mkv;mp4;mpv;
+MimeType=video/mp4;video/x-m4v;video/x-matroska;video/webm;video/quicktime;video/x-msvideo;video/vnd.avi;video/avi;video/mpeg;video/mp2t;video/ogg;video/x-ogm+ogg;video/x-flv;video/3gpp;video/3gpp2;video/x-ms-wmv;video/x-ms-asf;video/dv;application/x-matroska;
+StartupNotify=true
+StartupWMClass=io.github.design_nexus.MediaPlayer
+SingleMainWindow=true
+DBusActivatable=false
