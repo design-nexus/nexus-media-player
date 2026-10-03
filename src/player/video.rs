@@ -46,6 +46,7 @@ const PARAM_OPENGL_INIT_PARAMS: c_int = 2;
 const PARAM_OPENGL_FBO: c_int = 3;
 const PARAM_FLIP_Y: c_int = 4;
 const PARAM_WL_DISPLAY: c_int = 9;
+const PARAM_BLOCK_FOR_TARGET_TIME: c_int = 12;
 const UPDATE_FRAME: u64 = 1;
 
 #[link(name = "mpv")]
@@ -319,9 +320,14 @@ fn render(size: (i32, i32)) {
         let target = r.target(size);
         let mut fbo = OpenGlFbo { fbo: target.fbo as c_int, w: size.0, h: size.1, internal_format: 0 };
         let mut flip: c_int = 0;
+        // mpv already asks for each frame when it's due. Left on, it would also
+        // wait for that moment inside render, stalling the main loop for most
+        // of every frame so GTK misses vsyncs and the video stutters.
+        let mut block: c_int = 0;
         let mut params = [
             RenderParam { kind: PARAM_OPENGL_FBO, data: &mut fbo as *mut _ as *mut c_void },
             RenderParam { kind: PARAM_FLIP_Y, data: &mut flip as *mut _ as *mut c_void },
+            RenderParam { kind: PARAM_BLOCK_FOR_TARGET_TIME, data: &mut block as *mut _ as *mut c_void },
             RenderParam { kind: PARAM_INVALID, data: std::ptr::null_mut() },
         ];
         // SAFETY: our context is current and the FBO is complete.
