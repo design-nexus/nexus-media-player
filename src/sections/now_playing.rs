@@ -444,10 +444,14 @@ pub fn build(page: &Page) {
     let full = widgets::icon_button("view-fullscreen-symbolic", "Fullscreen (F)");
     full.add_css_class("osd-button");
     full.set_focus_on_click(false);
+    let close = widgets::icon_button("window-close-symbolic", "Close video");
+    close.add_css_class("osd-button");
+    close.set_focus_on_click(false);
     row.append(&speed);
     row.append(&audio);
     row.append(&subs);
     row.append(&full);
+    row.append(&close);
     controls.append(&row);
     overlay.add_overlay(&controls);
     page.body.append(&overlay);
@@ -459,6 +463,10 @@ pub fn build(page: &Page) {
     back.connect_clicked(|_| player::seek_by(-prefs::get().skip_short));
     fwd.connect_clicked(|_| player::seek_by(prefs::get().skip_short));
     full.connect_clicked(|_| window::toggle_fullscreen());
+    close.connect_clicked(|_| {
+        player::close();
+        window::navigate("home");
+    });
     if let Some(w) = window::window() {
         let weak = full.downgrade();
         w.connect_fullscreened_notify(move |w| {
@@ -599,7 +607,7 @@ pub fn build(page: &Page) {
             next.clone(),
             wake.clone(),
         );
-        let (subs, audio) = (subs.clone(), audio.clone());
+        let (subs, audio, close) = (subs.clone(), audio.clone(), close.clone());
         move |e: Event| match e {
             Event::Track | Event::Video => {
                 let cur = player::current();
@@ -631,6 +639,7 @@ pub fn build(page: &Page) {
                     }
                 }
                 top.set_visible(cur.is_some());
+                close.set_sensitive(cur.is_some());
                 prev.set_sensitive(player::can_previous());
                 next.set_sensitive(player::can_next());
             }

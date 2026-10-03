@@ -995,6 +995,17 @@ pub fn move_item(from: usize, to: usize) {
     queue_changed();
 }
 
+/// Stop and unload the current video, keeping the rest of the queue.
+pub fn close() {
+    stop();
+    with(|p| {
+        p.queue.cursor = None;
+        p.current = None;
+    });
+    emit(Event::Track);
+    queue_changed();
+}
+
 pub fn clear() {
     stop();
     with(|p| {

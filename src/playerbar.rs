@@ -43,18 +43,20 @@ pub fn build() -> gtk::Box {
     let info = widgets::hbox(12);
     info.add_css_class("player-info");
     info.set_size_request(240, -1);
-    let thumb = gtk::Stack::new();
+    // The art sizes the thumbnail; the video sits over it as an overlay, which
+    // isn't measured, so a full-size frame can't stretch the bar.
+    let thumb = gtk::Overlay::new();
     thumb.add_css_class("mini-video");
-    thumb.set_size_request(96, 54);
     thumb.set_valign(gtk::Align::Center);
     thumb.set_overflow(gtk::Overflow::Hidden);
+    let art = Art::wide(96);
+    thumb.set_child(Some(&art.root));
     let picture = gtk::Picture::for_paintable(&video::paintable());
+    picture.add_css_class("mini-video");
     picture.set_content_fit(gtk::ContentFit::Contain);
     picture.set_can_shrink(true);
-    picture.set_size_request(96, 54);
-    thumb.add_named(&picture, Some("video"));
-    let art = Art::wide(96);
-    thumb.add_named(&art.root, Some("art"));
+    picture.set_visible(false);
+    thumb.add_overlay(&picture);
     info.append(&thumb);
     let text = widgets::vbox(2);
     text.set_valign(gtk::Align::Center);
@@ -99,6 +101,9 @@ pub fn build() -> gtk::Box {
     let right = widgets::hbox(8);
     right.set_valign(gtk::Align::Center);
     right.set_halign(gtk::Align::End);
+    let close = widgets::icon_button("window-close-symbolic", "Close video");
+    close.set_focus_on_click(false);
+    right.append(&close);
     let p = prefs::get();
     let mute = widgets::icon_button(volume_icon(p.volume, p.muted), "Mute");
     mute.set_focus_on_click(false);
@@ -118,6 +123,7 @@ pub fn build() -> gtk::Box {
     play.connect_clicked(|_| player::toggle());
     prev.connect_clicked(|_| player::previous());
     next.connect_clicked(|_| player::next());
+    close.connect_clicked(|_| player::close());
     mute.connect_clicked(|_| player::set_muted(!prefs::get().muted));
     volume.connect_change_value(|s, _, v| {
         let v = v.clamp(0.0, 1.0);
@@ -136,8 +142,8 @@ pub fn build() -> gtk::Box {
     mute.add_controller(scroll);
 
     let refresh = {
-        let (thumb, art, title, sub, play, mute, volume, prev, next) = (
-            thumb.clone(),
+        let (picture, art, title, sub, play, mute, volume, prev, next, close) = (
+            picture.clone(),
             art.clone(),
             title.clone(),
             sub.clone(),
@@ -146,6 +152,7 @@ pub fn build() -> gtk::Box {
             volume.clone(),
             prev.clone(),
             next.clone(),
+            close.clone(),
         );
         move |e: Event| match e {
             Event::Track | Event::Video => {
@@ -167,7 +174,8 @@ pub fn build() -> gtk::Box {
                     }
                 }
                 let live = player::has_video() || video::paintable().has_frame();
-                thumb.set_visible_child_name(if live { "video" } else { "art" });
+                picture.set_visible(live);
+                close.set_sensitive(player::current().is_some());
                 prev.set_sensitive(player::can_previous());
                 next.set_sensitive(player::can_next());
             }
@@ -195,10 +203,9 @@ pub fn build() -> gtk::Box {
         refresh(e);
     }
     player::subscribe(&bar, refresh);
-    let t2 = thumb.clone();
     video::paintable().connect_invalidate_contents(move |p| {
-        if p.has_frame() && t2.visible_child_name().as_deref() != Some("video") {
-            t2.set_visible_child_name("video");
+        if p.has_frame() && !picture.is_visible() {
+            picture.set_visible(true);
         }
     });
     bar
