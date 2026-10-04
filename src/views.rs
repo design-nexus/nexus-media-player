@@ -228,7 +228,7 @@ pub fn wide_card(v: &Rc<Video>, width: i32, subtitle: &str) -> gtk::Button {
     art.root.add_overlay(&strip);
     col.append(&art.root);
     let (title, second) = match v.kind {
-        Kind::Episode => (v.show.clone(), format!("{} · {}", v.code(), v.episode_name())),
+        Kind::Episode => (v.show.clone(), v.episode_line()),
         _ => (v.title.clone(), v.year.map(|y| y.to_string()).unwrap_or_default()),
     };
     let t = widgets::label(&title, "card-title");

@@ -402,7 +402,7 @@ fn snapshot() -> Snapshot {
         Meta {
             track_id: track_id(t),
             length_us: (player::duration().max(t.duration) * 1e6) as i64,
-            title: if t.kind == Kind::Episode { format!("{} · {}", t.code(), t.episode_name()) } else { t.title.clone() },
+            title: if t.kind == Kind::Episode { t.episode_line() } else { t.title.clone() },
             artist: if t.kind == Kind::Episode { t.show.clone() } else { t.year.map(|y| y.to_string()).unwrap_or_default() },
             album: if t.kind == Kind::Episode { t.show.clone() } else { String::new() },
             album_artist: String::new(),

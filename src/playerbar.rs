@@ -159,7 +159,7 @@ pub fn build() -> gtk::Box {
                 match player::current() {
                     Some(v) => {
                         let (t, s) = match v.kind {
-                            Kind::Episode => (v.show.clone(), format!("{} · {}", v.code(), v.episode_name())),
+                            Kind::Episode => (v.show.clone(), v.episode_line()),
                             _ => (v.title.clone(), v.year.map(|y| y.to_string()).unwrap_or_default()),
                         };
                         title.set_text(&t);

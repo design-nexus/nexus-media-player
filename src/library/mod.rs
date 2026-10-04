@@ -159,6 +159,12 @@ impl Video {
         if self.title.is_empty() || self.title == self.show { self.code() } else { self.title.clone() }
     }
 
+    /// "S01E02 · Name", or just the code when there's no name of its own.
+    pub fn episode_line(&self) -> String {
+        let (code, name) = (self.code(), self.episode_name());
+        if name == code { code } else { format!("{code} · {name}") }
+    }
+
     /// The picture for a poster-shaped card: the poster, else a frame.
     pub fn card_art(&self) -> &str {
         if self.poster.is_empty() { &self.still } else { &self.poster }

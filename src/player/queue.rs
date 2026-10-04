@@ -130,7 +130,6 @@ impl Queue {
     }
 
     /// What plays next on its own.
-    #[cfg(test)]
     pub fn peek_next(&self) -> Option<&PathBuf> {
         self.next_cursor(false).and_then(|c| self.items.get(c))
     }

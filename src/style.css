@@ -1046,6 +1046,31 @@ window.media-window button.back-button:hover {
   color: @theme_text;
 }
 
+.up-next {
+  margin: 0 16px 112px 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: alpha(@theme_surface, 0.94);
+  border: 1px solid alpha(@theme_border, 0.55);
+  box-shadow: 0 6px 24px alpha(@theme_shadow, 0.55), 0 0 20px alpha(@theme_glow, 0.1);
+}
+
+window.fullscreen .up-next {
+  margin: 0 32px 124px 0;
+}
+
+.up-next-when {
+  font-size: 0.78em;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: @theme_accent;
+}
+
+.up-next-title {
+  font-weight: 800;
+  font-size: 1.05em;
+}
+
 .drop-hint {
   padding: 18px 28px;
   border-radius: 12px;

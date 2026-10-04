@@ -316,6 +316,95 @@ pub fn choose_subtitle_file() {
     });
 }
 
+/// Seconds before the end when Up next appears (if there are no credits).
+const UP_NEXT_LEAD: f64 = 20.0;
+
+/// The card near the end of a video: what's next, a countdown, Play now
+/// and Cancel.
+#[derive(Clone)]
+struct UpNext {
+    root: gtk::Box,
+    art: Art,
+    title: gtk::Label,
+    detail: gtk::Label,
+    when: gtk::Label,
+    showing: Rc<RefCell<Option<std::path::PathBuf>>>,
+}
+
+impl UpNext {
+    fn new() -> UpNext {
+        let root = widgets::hbox(14);
+        root.add_css_class("up-next");
+        root.set_halign(gtk::Align::End);
+        root.set_valign(gtk::Align::End);
+        root.set_visible(false);
+        let art = Art::wide(160);
+        root.append(&art.root);
+        let text = widgets::vbox(3);
+        text.set_valign(gtk::Align::Center);
+        let when = widgets::label("", "up-next-when");
+        when.add_css_class("mono");
+        let title = widgets::label("", "up-next-title");
+        title.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        title.set_max_width_chars(28);
+        let detail = widgets::label("", "dim");
+        detail.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        detail.set_max_width_chars(28);
+        let buttons = widgets::hbox(8);
+        buttons.set_margin_top(6);
+        let play = widgets::labeled_button("media-playback-start-symbolic", "Play now");
+        play.add_css_class("suggested-action");
+        play.connect_clicked(|_| player::play_up_next());
+        let cancel = gtk::Button::with_label("Cancel");
+        cancel.connect_clicked(|_| player::cancel_up_next());
+        buttons.append(&play);
+        buttons.append(&cancel);
+        for w in [when.upcast_ref::<gtk::Widget>(), title.upcast_ref(), detail.upcast_ref(), buttons.upcast_ref()] {
+            text.append(w);
+        }
+        root.append(&text);
+        UpNext { root, art, title, detail, when, showing: Rc::default() }
+    }
+
+    /// When the credits start: a chapter named like "Credits" near the end.
+    fn credits_at() -> Option<f64> {
+        let d = player::duration();
+        player::chapters()
+            .iter()
+            .rev()
+            .find(|(t, name)| *t > d * 0.8 && name.to_lowercase().contains("credit"))
+            .map(|(t, _)| *t)
+    }
+
+    fn update(&self) {
+        let (d, pos) = (player::duration(), player::position());
+        let left = (d - pos).max(0.0);
+        let due = d > 60.0
+            && player::state() == State::Playing
+            && (left <= UP_NEXT_LEAD || Self::credits_at().is_some_and(|c| pos >= c));
+        let next = if due { player::up_next() } else { None };
+        let Some(next) = next else {
+            self.root.set_visible(false);
+            *self.showing.borrow_mut() = None;
+            return;
+        };
+        if self.showing.borrow().as_ref() != Some(&next.path) {
+            let (t, s) = match next.kind {
+                Kind::Episode => (next.show.clone(), next.episode_line()),
+                _ => (next.title.clone(), next.year.map(|y| y.to_string()).unwrap_or_default()),
+            };
+            self.title.set_text(&t);
+            self.detail.set_text(&s);
+            self.detail.set_visible(!s.is_empty());
+            self.art.set_key(next.wide_art());
+            *self.showing.borrow_mut() = Some(next.path.clone());
+        }
+        let secs = (left / player::speed().max(0.01)).ceil() as u64;
+        self.when.set_text(&format!("UP NEXT · IN {secs} S"));
+        self.root.set_visible(true);
+    }
+}
+
 #[derive(Default)]
 struct Swipe {
     active: bool,
@@ -535,6 +624,8 @@ pub fn build(page: &Page) {
     row.append(&close);
     controls.append(&row);
     overlay.add_overlay(&controls);
+    let up_next = UpNext::new();
+    overlay.add_overlay(&up_next.root);
     page.body.append(&overlay);
 
     // ----- Wiring -----
@@ -754,7 +845,7 @@ pub fn build(page: &Page) {
                         match v.kind {
                             Kind::Episode => {
                                 title.set_text(&v.show);
-                                *sub_base.borrow_mut() = format!("{} · {}", v.code(), v.episode_name());
+                                *sub_base.borrow_mut() = v.episode_line();
                             }
                             _ => {
                                 title.set_text(&v.title);
@@ -782,6 +873,7 @@ pub fn build(page: &Page) {
             Event::Queue => {
                 prev.set_sensitive(player::can_previous());
                 next.set_sensitive(player::can_next());
+                up_next.update();
             }
             Event::Buffering => spinner.set_visible(player::buffering()),
             Event::Options => {
@@ -808,6 +900,7 @@ pub fn build(page: &Page) {
                 chapters.set_visible(!player::chapters().is_empty());
             }
             Event::Position | Event::Seeked => {
+                up_next.update();
                 show_sub();
                 // The layout may have changed (fullscreen, a resize).
                 place_subs(!controls.has_css_class("idle"));

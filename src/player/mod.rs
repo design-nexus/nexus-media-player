@@ -170,6 +170,8 @@ struct Player {
     last_tick: Instant,
     /// The whole-session queue position to restore once the video is ready.
     restore_at: Option<f64>,
+    /// Up next was cancelled: stop when this video ends.
+    hold_at_end: bool,
 }
 
 type Callback = Rc<dyn Fn(Event)>;
@@ -341,6 +343,7 @@ pub fn init() {
             buffering: false,
             loading: false,
             ended: false,
+            hold_at_end: false,
             counted: false,
             failures: 0,
             last_saved: Instant::now(),
@@ -648,6 +651,15 @@ fn finished() {
             w.last_played = crate::library::now();
         });
     }
+    if with(|p| p.hold_at_end).unwrap_or(false) {
+        with(|p| {
+            p.state = State::Paused;
+            p.position = p.duration;
+        });
+        emit(Event::State);
+        emit(Event::Seeked);
+        return;
+    }
     if with(|p| p.queue.advance(false)).flatten().is_some() {
         load_current(true);
         return;
@@ -671,6 +683,31 @@ fn finished() {
     emit(Event::Seeked);
 }
 
+/// What starts when this video ends: the queue's next, else (for a show) the
+/// next episode. None once Up next is cancelled.
+pub fn up_next() -> Option<Rc<Video>> {
+    let cur = current()?;
+    if with(|p| p.hold_at_end).unwrap_or(true) {
+        return None;
+    }
+    if let Some(path) = with(|p| p.queue.peek_next().cloned()).flatten() {
+        return (path != cur.path).then(|| store::video_for(&path));
+    }
+    if prefs::get().autoplay_next { store::next_episode(&cur) } else { None }
+}
+
+/// Stop at the end of this video instead of going on.
+pub fn cancel_up_next() {
+    with(|p| p.hold_at_end = true);
+    emit(Event::Queue);
+}
+
+/// Finish this video now (it counts as watched) and start what's next.
+pub fn play_up_next() {
+    with(|p| p.hold_at_end = false);
+    finished();
+}
+
 /// Point `current` at the queue's video and reset the per-video counters.
 fn adopt_current() {
     let path = with(|p| p.queue.current().cloned()).flatten();
@@ -681,6 +718,7 @@ fn adopt_current() {
         p.position = 0.0;
         p.counted = false;
         p.ended = false;
+        p.hold_at_end = false;
         p.tracks.clear();
         p.chapters.clear();
     });
