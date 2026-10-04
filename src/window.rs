@@ -220,6 +220,7 @@ fn build(app: &gtk::Application) {
     window.set_child(Some(&overlay));
 
     install_keys(&window, &search);
+    accept_file_drops(&overlay);
     // Video drawing needs the window's surface; set it up as soon as there is one.
     window.connect_realize(player::attach);
     window.connect_fullscreened_notify(|w| apply_fullscreen(w.is_fullscreen()));
@@ -476,6 +477,45 @@ fn cycle_track(kind: player::TrackKind) {
         player::TrackKind::Audio => player::set_audio(id),
     }
     flash(&label);
+}
+
+/// Videos, folders and M3U files dropped on the window play; with Shift they
+/// join the queue.
+fn accept_file_drops(overlay: &gtk::Overlay) {
+    let hint = widgets::label("Drop to play · hold Shift to add to the queue", "drop-hint");
+    hint.set_halign(gtk::Align::Center);
+    hint.set_valign(gtk::Align::Center);
+    hint.set_can_target(false);
+    hint.set_visible(false);
+    overlay.add_overlay(&hint);
+    let target = gtk::DropTarget::new(gdk::FileList::static_type(), gdk::DragAction::COPY);
+    let h = hint.clone();
+    target.connect_enter(move |_, _, _| {
+        h.set_visible(true);
+        gdk::DragAction::COPY
+    });
+    let h = hint.clone();
+    target.connect_leave(move |_| h.set_visible(false));
+    target.connect_drop(move |t, value, _, _| {
+        hint.set_visible(false);
+        let Ok(list) = value.get::<gdk::FileList>() else { return false };
+        let dropped: Vec<std::path::PathBuf> = list.files().iter().filter_map(|f| f.path()).collect();
+        let paths = crate::expand(&dropped);
+        if paths.is_empty() {
+            toast("Nothing there plays as a video.");
+            return false;
+        }
+        if t.current_event_state().contains(gdk::ModifierType::SHIFT_MASK) {
+            let n = paths.len();
+            player::enqueue(paths);
+            toast(&crate::menu::added_text(n, "to the queue"));
+        } else {
+            player::play_paths(paths, 0);
+            navigate("now-playing");
+        }
+        true
+    });
+    overlay.add_controller(target);
 }
 
 /// Open video files from a file dialog and play them.

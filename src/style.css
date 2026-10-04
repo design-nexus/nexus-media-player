@@ -1034,6 +1034,16 @@ window.media-window button.back-button:hover {
   color: @theme_text;
 }
 
+.drop-hint {
+  padding: 18px 28px;
+  border-radius: 12px;
+  font-weight: 700;
+  color: @theme_text;
+  background: alpha(@theme_surface, 0.94);
+  border: 2px dashed @theme_accent;
+  box-shadow: 0 6px 24px alpha(@theme_shadow, 0.5);
+}
+
 .detail-hero {
   margin-bottom: 18px;
 }
