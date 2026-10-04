@@ -519,32 +519,11 @@ pub fn build(page: &Page) {
 
     // ----- Keyboard -----
     let g = page.group("Keyboard");
-    for (keys, what) in [
-        (&["Space"][..], "Play or pause"),
-        (&["←"][..], "Back a short skip"),
-        (&["→"][..], "Forward a short skip"),
-        (&["Shift", "←"][..], "Back a long skip"),
-        (&["Shift", "→"][..], "Forward a long skip"),
-        (&["Ctrl", "←"][..], "Previous video"),
-        (&["Ctrl", "→"][..], "Next video"),
-        (&["↑"][..], "Louder"),
-        (&["↓"][..], "Quieter"),
-        (&["M"][..], "Mute"),
-        (&["F"][..], "Fullscreen"),
-        (&["S"][..], "Next subtitles"),
-        (&["A"][..], "Next sound track"),
-        (&["Z"][..], "Subtitles earlier"),
-        (&["X"][..], "Subtitles later"),
-        (&["["][..], "Slower"),
-        (&["]"][..], "Faster"),
-        (&[","][..], "Back one frame"),
-        (&["."][..], "Forward one frame"),
-        (&["Ctrl", "O"][..], "Open files"),
-        (&["Ctrl", "F"][..], "Search the library"),
-        (&["Esc"][..], "Leave fullscreen, or clear the search"),
-        (&["Ctrl", "Q"][..], "Close"),
-    ] {
-        g.add(&widgets::row(what, "", Some(widgets::key_caps(keys).upcast_ref())));
+    for (_, keys) in crate::window::SHORTCUTS {
+        for (caps, what) in *keys {
+            g.add(&widgets::row(what, "", Some(widgets::key_caps(caps).upcast_ref())));
+        }
     }
+    g.note("Press <b>?</b> anywhere to see these.");
     g.note("Media keys work through MPRIS. From a terminal or a binding: <tt>media-player --play-pause</tt>, <tt>--next</tt>, <tt>--previous</tt>.");
 }

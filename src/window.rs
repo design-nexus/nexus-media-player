@@ -334,6 +334,84 @@ fn set_compact_hidden(root: &gtk::Box, compact: bool) {
     walk(root.upcast_ref(), compact);
 }
 
+type Keys = &'static [(&'static [&'static str], &'static str)];
+
+/// Every shortcut, in groups: shown by `?` and in Settings.
+pub const SHORTCUTS: &[(&str, Keys)] = &[
+    (
+        "Playback",
+        &[
+            (&["Space"], "Play or pause"),
+            (&["←"], "Back a short skip"),
+            (&["→"], "Forward a short skip"),
+            (&["Shift", "←"], "Back a long skip"),
+            (&["Shift", "→"], "Forward a long skip"),
+            (&["0–9"], "Jump to that tenth of the video"),
+            (&["Page Up"], "Previous chapter"),
+            (&["Page Down"], "Next chapter"),
+            (&["Ctrl", "←"], "Previous video"),
+            (&["Ctrl", "→"], "Next video"),
+            (&[","], "Back one frame"),
+            (&["."], "Forward one frame"),
+            (&["["], "Slower"),
+            (&["]"], "Faster"),
+            (&["F"], "Fullscreen"),
+            (&["Esc"], "Leave fullscreen, or clear the search"),
+        ],
+    ),
+    (
+        "Sound and subtitles",
+        &[
+            (&["↑"], "Louder"),
+            (&["↓"], "Quieter"),
+            (&["M"], "Mute"),
+            (&["N"], "Night mode"),
+            (&["A"], "Next sound track"),
+            (&["Ctrl", "−"], "Sound earlier"),
+            (&["Ctrl", "+"], "Sound later"),
+            (&["S"], "Next subtitles"),
+            (&["Z"], "Subtitles earlier"),
+            (&["X"], "Subtitles later"),
+        ],
+    ),
+    (
+        "Everywhere",
+        &[
+            (&["Ctrl", "O"], "Open files"),
+            (&["Ctrl", "L"], "Open a web address"),
+            (&["Ctrl", "S"], "Save the frame as a picture"),
+            (&["Ctrl", "F"], "Search the library"),
+            (&["Ctrl", "B"], "Collapse or expand the sidebar"),
+            (&["?"], "These shortcuts"),
+            (&["Ctrl", "Q"], "Close"),
+        ],
+    ),
+];
+
+/// A window listing every shortcut, in columns.
+pub fn show_shortcuts() {
+    let (dialog, card) = widgets::dialog("Keyboard shortcuts", 860);
+    card.add_css_class("shortcuts");
+    let columns = widgets::hbox(28);
+    for (title, keys) in SHORTCUTS {
+        let col = widgets::vbox(6);
+        col.set_hexpand(true);
+        col.append(&widgets::label(&title.to_uppercase(), "group-title"));
+        for (caps, what) in *keys {
+            let row = widgets::hbox(12);
+            let l = widgets::label(what, "");
+            l.set_hexpand(true);
+            l.set_xalign(0.0);
+            row.append(&l);
+            row.append(&widgets::key_caps(caps));
+            col.append(&row);
+        }
+        columns.append(&col);
+    }
+    card.append(&columns);
+    dialog.present();
+}
+
 fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
     // Capture phase: these work wherever focus is, except while typing.
     let keys = gtk::EventControllerKey::new();
@@ -402,6 +480,7 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
             return glib::Propagation::Proceed;
         }
         match key {
+            gdk::Key::question | gdk::Key::F1 => show_shortcuts(),
             gdk::Key::space => player::toggle(),
             gdk::Key::Escape if w2.is_fullscreen() => set_fullscreen(false),
             gdk::Key::Escape if !s2.text().is_empty() => s2.set_text(""),
