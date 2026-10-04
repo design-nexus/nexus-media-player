@@ -354,7 +354,19 @@ pub fn episode_row(v: &Rc<Video>) -> gtk::Box {
     click.connect_released(move |g, _, x, y| {
         let Some(w) = g.widget() else { return };
         if g.current_button() == gdk::BUTTON_SECONDARY {
-            menu::video_menu(&w, x, y, vec![v2.clone()], Vec::new());
+            let v3 = v2.clone();
+            let up_to: menu::Extra = (
+                "Mark watched up to here",
+                Rc::new(move || {
+                    if let Some(show) = store::show_of(&v3) {
+                        let eps: Vec<Rc<Video>> = show.episodes().cloned().collect();
+                        if let Some(i) = eps.iter().position(|e| e.path == v3.path) {
+                            store::set_watched(&eps[..=i], true);
+                        }
+                    }
+                }),
+            );
+            menu::video_menu(&w, x, y, vec![v2.clone()], vec![up_to]);
         } else if g.current_button() == gdk::BUTTON_PRIMARY {
             play_video(&v2);
         }

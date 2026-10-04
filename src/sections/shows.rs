@@ -228,6 +228,16 @@ fn show_detail(key: &str, season: Option<usize>) {
     title.set_hexpand(true);
     title.set_valign(gtk::Align::Center);
     bar.append(&title);
+    // The season from its first unwatched episode, going on through the show.
+    let start = current.episodes.iter().find(|e| !e.watch.get().watched).or(current.episodes.first()).cloned();
+    if let Some(start) = start {
+        let b = widgets::labeled_button("media-playback-start-symbolic", "Play season");
+        b.add_css_class("flat");
+        b.set_valign(gtk::Align::Center);
+        b.set_tooltip_text(Some(&format!("From {}", start.code())));
+        b.connect_clicked(move |_| views::play_video(&start));
+        bar.append(&b);
+    }
     if show.seasons.len() > 1 {
         let opts: Vec<(String, String)> = show
             .seasons
