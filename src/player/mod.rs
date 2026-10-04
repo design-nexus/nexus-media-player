@@ -274,6 +274,10 @@ fn options() -> Vec<(String, String)> {
     o.push(("volume".into(), format!("{:.0}", p.volume * 100.0)));
     o.push(("mute".into(), if p.muted { "yes" } else { "no" }.into()));
     o.push(("sub-scale".into(), format!("{:.2}", p.sub_scale)));
+    o.push(("sub-back-color".into(), "#B0000000".into()));
+    if p.sub_background {
+        o.push(("sub-border-style".into(), "background-box".into()));
+    }
     if !p.audio_lang.is_empty() {
         o.push(("alang".into(), p.audio_lang.clone()));
     }
@@ -1157,6 +1161,23 @@ pub fn set_audio_delay(secs: f64) {
 pub fn nudge_audio_delay(delta: f64) {
     set_audio_delay(audio_delay() + delta);
     window::flash(&format!("Sound {}", crate::fmt::delay_ms(audio_delay())));
+}
+
+pub fn set_sub_background(on: bool) {
+    prefs::update(|p| p.sub_background = on);
+    with_mpv(|m| m.set_str("sub-border-style", if on { "background-box" } else { "outline-and-shadow" }));
+}
+
+/// Where subtitles sit, in percent of the picture's height from the top
+/// (100 is mpv's usual place at the bottom).
+pub fn set_sub_pos(pos: f64) {
+    let pos = pos.clamp(50.0, 100.0).round();
+    thread_local! {
+        static LAST: Cell<f64> = const { Cell::new(100.0) };
+    }
+    if LAST.with(|l| l.replace(pos)) != pos {
+        with_mpv(|m| m.set_f64("sub-pos", pos));
+    }
 }
 
 pub fn set_sub_scale(scale: f64) {

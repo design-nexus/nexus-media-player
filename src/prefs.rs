@@ -57,6 +57,8 @@ pub struct Prefs {
     /// Show subtitles when a video has them.
     pub subtitles: bool,
     pub sub_scale: f64,
+    /// Text subtitles on a dark box instead of an outline.
+    pub sub_background: bool,
     /// Thumbnails on the seek bar.
     pub scrub: bool,
     /// The seek bar shows the time left instead of the length.
@@ -107,6 +109,7 @@ impl Default for Prefs {
             sub_lang: String::new(),
             subtitles: true,
             sub_scale: 1.0,
+            sub_background: false,
             scrub: true,
             time_left: false,
             notify: false,

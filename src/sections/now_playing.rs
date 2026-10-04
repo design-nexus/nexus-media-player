@@ -226,6 +226,12 @@ fn subtitle_menu(content: &gtk::Box, pop: &gtk::Popover) {
     });
     content.append(&load);
     content.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+    let boxed = prefs::get().sub_background;
+    let p = pop.clone();
+    content.append(&choice("Dark background", "", boxed, move || {
+        player::set_sub_background(!boxed);
+        p.popdown();
+    }));
 
     content.append(&delay_row(("Earlier (Z)", "Later (X)"), 0.1, player::sub_delay, player::set_sub_delay, fmt::delay));
 
@@ -524,23 +530,52 @@ pub fn build(page: &Page) {
         glib::Propagation::Proceed
     });
 
+    // Subtitles move up out of the way while the controls show.
+    let place_subs: Rc<dyn Fn(bool)> = {
+        let (overlay, controls) = (overlay.clone(), controls.clone());
+        Rc::new(move |shown: bool| {
+            let (vw, vh) = player::video_size();
+            let (w, h) = (overlay.width() as f64, overlay.height() as f64);
+            let top = controls.compute_bounds(&overlay).map(|b| b.y() as f64);
+            let (Some(top), true) = (top, shown && vw > 0 && vh > 0 && w > 0.0 && h > 0.0) else {
+                player::set_sub_pos(100.0);
+                return;
+            };
+            let shown_h = vh as f64 * (w / vw as f64).min(h / vh as f64);
+            // Below 100, mpv drops its bottom margin; keep a little room.
+            let overlap = (h + shown_h) / 2.0 - top;
+            let lift = if overlap > 0.0 { overlap + 16.0 } else { 0.0 };
+            player::set_sub_pos(100.0 - lift / shown_h * 100.0);
+        })
+    };
+
+    overlay.connect_unmap(|_| player::set_sub_pos(100.0));
+
     // Controls fade out while playing and the pointer rests.
     let idle_gen: Rc<Cell<u32>> = Rc::default();
     let over_controls = Rc::new(Cell::new(false));
     let menus = [chapters.clone(), speed.clone(), audio.clone(), subs.clone()];
     let wake: Rc<dyn Fn()> = {
-        let (overlay, top, controls, idle_gen, over_controls) =
-            (overlay.clone(), top.clone(), controls.clone(), idle_gen.clone(), over_controls.clone());
+        let (overlay, top, controls, idle_gen, over_controls, place_subs) =
+            (overlay.clone(), top.clone(), controls.clone(), idle_gen.clone(), over_controls.clone(), place_subs.clone());
         Rc::new(move || {
             for w in [top.upcast_ref::<gtk::Widget>(), controls.upcast_ref()] {
                 w.remove_css_class("idle");
                 w.set_can_target(true);
             }
+            place_subs(true);
             overlay.set_cursor(None);
             let g = idle_gen.get().wrapping_add(1);
             idle_gen.set(g);
-            let (overlay, top, controls, idle_gen, over, menus) =
-                (overlay.clone(), top.clone(), controls.clone(), idle_gen.clone(), over_controls.clone(), menus.clone());
+            let (overlay, top, controls, idle_gen, over, menus, place_subs) = (
+                overlay.clone(),
+                top.clone(),
+                controls.clone(),
+                idle_gen.clone(),
+                over_controls.clone(),
+                menus.clone(),
+                place_subs.clone(),
+            );
             glib::timeout_add_local_once(HIDE_AFTER, move || {
                 // Stay while a menu is open.
                 let busy_menu = menus.iter().any(|m| m.is_active());
@@ -551,6 +586,7 @@ pub fn build(page: &Page) {
                     w.add_css_class("idle");
                     w.set_can_target(false);
                 }
+                place_subs(false);
                 overlay.set_cursor_from_name(Some("none"));
             });
         })
@@ -661,6 +697,7 @@ pub fn build(page: &Page) {
         );
         let (subs, audio, close, chapters) = (subs.clone(), audio.clone(), close.clone(), chapters.clone());
         let (sub_base, show_sub) = (sub_base.clone(), show_sub.clone());
+        let (place_subs, controls) = (place_subs.clone(), controls.clone());
         move |e: Event| match e {
             Event::Track | Event::Video => {
                 let cur = player::current();
@@ -731,7 +768,11 @@ pub fn build(page: &Page) {
                 audio.set_sensitive(player::current().is_some());
                 chapters.set_visible(!player::chapters().is_empty());
             }
-            Event::Position | Event::Seeked => show_sub(),
+            Event::Position | Event::Seeked => {
+                show_sub();
+                // The layout may have changed (fullscreen, a resize).
+                place_subs(!controls.has_css_class("idle"));
+            }
         }
     };
     for e in [Event::Track, Event::State, Event::Options, Event::Tracks, Event::Buffering] {

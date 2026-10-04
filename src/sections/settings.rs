@@ -317,6 +317,13 @@ pub fn build(page: &Page) {
     size_box.append(&readout);
     g.add(&widgets::row("Subtitle size", "Text subtitles; picture subtitles keep their size.", Some(size_box.upcast_ref())));
     let (r, _) = widgets::switch_row(
+        "Subtitle background",
+        "Put text subtitles on a dark box, easier to read over bright pictures.",
+        p.sub_background,
+        player::set_sub_background,
+    );
+    g.add(&r);
+    let (r, _) = widgets::switch_row(
         "Night mode",
         "Even out loud and quiet parts so dialogue is clear without loud scenes jumping out (N).",
         p.night_mode,
