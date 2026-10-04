@@ -558,31 +558,25 @@ pub fn build(page: &Page) {
     over.connect_leave(move |_| o.set(false));
     controls.add_controller(over);
 
-    // Click to pause, double-click for fullscreen.
+    // Click to pause, at once; a double-click undoes that and goes fullscreen.
     let click = gtk::GestureClick::new();
-    let pending: Rc<Cell<u32>> = Rc::default();
-    let p = pending.clone();
+    let toggled = Rc::new(Cell::new(false));
+    let t = toggled.clone();
     click.connect_pressed(move |g, n, _, _| {
         if n == 2 {
-            p.set(p.get().wrapping_add(1));
+            if t.replace(false) {
+                player::toggle();
+            }
             window::toggle_fullscreen();
             g.set_state(gtk::EventSequenceState::Claimed);
         }
     });
-    let p = pending.clone();
     click.connect_released(move |_, n, _, _| {
-        if n != 1 || player::current().is_none() {
-            return;
+        let first = n == 1 && player::current().is_some();
+        toggled.set(first);
+        if first {
+            player::toggle();
         }
-        let g = p.get().wrapping_add(1);
-        p.set(g);
-        let p2 = p.clone();
-        let delay = gtk::Settings::default().map_or(400, |s| s.gtk_double_click_time()) as u64;
-        glib::timeout_add_local_once(Duration::from_millis(delay.min(400)), move || {
-            if p2.get() == g {
-                player::toggle();
-            }
-        });
     });
     stage.add_controller(click);
 
