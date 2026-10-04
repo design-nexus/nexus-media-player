@@ -3,6 +3,7 @@
 mod cmd;
 mod eq;
 mod fmt;
+mod inhibit;
 mod library;
 mod menu;
 mod mpris;
@@ -53,6 +54,7 @@ fn start(app: &gtk::Application) {
     glib::timeout_add_local_once(std::time::Duration::from_millis(600), || library::store::rescan(false));
     library::store::start_watching();
     mpris::start(app);
+    inhibit::start();
 }
 
 /// Videos from the command line: files, folders (everything inside, in path
