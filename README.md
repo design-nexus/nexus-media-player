@@ -21,7 +21,8 @@ from your Omarchy theme and fits a half-screen tile.
   files (`movie.nfo`, `tvshow.nfo`, `<name>.nfo`), then optionally
   [TMDB](https://www.themoviedb.org) with your own free API key. Posters and thumbnails
   come from images beside the videos (`poster.jpg`, `<name>-poster.jpg`,
-  `<name>-thumb.jpg`), from TMDB, or a frame grabbed from the video. **Fix match**
+  `<name>-thumb.jpg`, and `fanart.jpg` or `<name>-fanart.jpg` behind a movie or show's
+  page), from TMDB, or a frame grabbed from the video. **Fix match**
   picks the right TMDB entry when the guess is wrong.
 - **Playback** with mpv: hardware decoding, every format mpv plays, and speed from
   0.25× to 3× with the pitch kept.
@@ -32,7 +33,12 @@ from your Omarchy theme and fits a half-screen tile.
   - **Subtitles:** picked up from files beside the video (`.srt`, `.ass`, `.vtt`…) or
     loaded by hand, with styled ASS, a delay you can nudge, and a size setting. Each
     video remembers its subtitle and sound tracks.
+  - **Sound:** a delay for videos whose sound is out of step, night mode to even out
+    loud and quiet parts, and an optional boost up to 150%.
   - Fullscreen, frame stepping, and controls that fade away while the video plays.
+  - The screen stays awake while a video plays.
+- **Drag and drop:** drop videos, folders or M3U playlists on the window to play them
+  (hold <kbd>Shift</kbd> to add them to the queue).
 - **Queue and playlists:** play next or add to the queue from any video's right-click
   menu, make playlists, drag videos onto them in the sidebar, and import or export M3U.
 - **Equalizer:** ten bands and a preamp, with presets and your own saved ones.
@@ -78,6 +84,8 @@ media-player [OPTIONS] [FILES…]
 | <kbd>M</kbd> | Mute |
 | <kbd>S</kbd> / <kbd>A</kbd> | Next subtitles / next sound track |
 | <kbd>Z</kbd> / <kbd>X</kbd> | Subtitles earlier / later |
+| <kbd>Ctrl</kbd>+<kbd>−</kbd> / <kbd>+</kbd> | Sound earlier / later |
+| <kbd>N</kbd> | Night mode |
 | <kbd>[</kbd> / <kbd>]</kbd> | Slower / faster |
 | <kbd>,</kbd> / <kbd>.</kbd> | Back / forward one frame |
 | <kbd>Ctrl</kbd>+<kbd>O</kbd> | Open files |
