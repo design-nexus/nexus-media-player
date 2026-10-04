@@ -286,6 +286,46 @@ fn subtitle_menu(content: &gtk::Box, pop: &gtk::Popover) {
     content.append(&size);
 }
 
+/// The player with nothing loaded: what you were watching, to pick up again.
+fn nothing_playing() -> gtk::Box {
+    let col = widgets::vbox(28);
+    col.set_valign(gtk::Align::Center);
+    col.set_halign(gtk::Align::Center);
+    let empty = widgets::empty_state(
+        "nmp-video-symbolic",
+        "Nothing playing",
+        "Pick up where you left off, choose a movie or an episode, or open a file with <b>Ctrl+O</b>.",
+        Some(("Browse movies", Box::new(|| window::navigate("movies")))),
+    );
+    empty.set_vexpand(false);
+    col.append(&empty);
+    let (row, cards) = crate::views::card_row("Continue watching");
+    row.add_css_class("player-resume");
+    col.append(&row);
+    let fill = move || {
+        while let Some(c) = cards.first_child() {
+            cards.remove(&c);
+        }
+        let list = crate::library::store::continue_watching();
+        for v in list.iter().take(4) {
+            cards.append(&crate::views::wide_card(v, 200, &fmt::left(v.duration - v.watch.get().position)));
+        }
+        row.set_visible(!list.is_empty());
+    };
+    let fill = Rc::new(fill);
+    fill();
+    let f = fill.clone();
+    col.connect_map(move |_| f());
+    // Shown only while nothing plays, so watch changes are rare here.
+    crate::library::store::subscribe(&col, move |change| {
+        use crate::library::store::Change;
+        if matches!(change, Change::Library | Change::Watch) {
+            fill();
+        }
+    });
+    col
+}
+
 /// Pick a subtitle file for the playing video.
 pub fn choose_subtitle_file() {
     let Some(v) = player::current() else { return };
@@ -517,13 +557,7 @@ pub fn build(page: &Page) {
     art.root.set_halign(gtk::Align::Center);
     still.append(&art.root);
     stage.add_named(&still, Some("still"));
-    let empty = widgets::empty_state(
-        "nmp-video-symbolic",
-        "Nothing playing",
-        "Pick a movie or an episode, or open a file with <b>Ctrl+O</b>.",
-        Some(("Browse movies", Box::new(|| window::navigate("movies")))),
-    );
-    stage.add_named(&empty, Some("empty"));
+    stage.add_named(&nothing_playing(), Some("empty"));
     overlay.set_child(Some(&stage));
 
     // ----- Top: what's playing -----

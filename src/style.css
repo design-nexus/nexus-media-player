@@ -1118,6 +1118,10 @@ window.media-window .player-info:hover button.bar-close {
   opacity: 1;
 }
 
+.player-resume {
+  margin: 0 24px;
+}
+
 .drop-hint {
   padding: 18px 28px;
   border-radius: 12px;
