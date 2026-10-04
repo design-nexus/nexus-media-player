@@ -13,12 +13,19 @@ use std::cell::RefCell;
 
 thread_local! {
     static NARROW_PARTS: RefCell<Vec<gtk::Widget>> = const { RefCell::new(Vec::new()) };
+    /// Shown only in narrow windows, in place of the parts above.
+    static NARROW_ONLY: RefCell<Vec<gtk::Widget>> = const { RefCell::new(Vec::new()) };
 }
 
 pub fn set_narrow(narrow: bool) {
     NARROW_PARTS.with(|p| {
         for w in p.borrow().iter() {
             w.set_visible(!narrow);
+        }
+    });
+    NARROW_ONLY.with(|p| {
+        for w in p.borrow().iter() {
+            w.set_visible(narrow);
         }
     });
 }
@@ -119,8 +126,39 @@ pub fn build() -> gtk::Box {
     volume.set_focus_on_click(false);
     volume.set_tooltip_text(Some(&format!("{}%", (p.volume * 100.0).round())));
     right.append(&volume);
+    // Narrow windows: one button that opens the volume.
+    let compact = gtk::MenuButton::new();
+    compact.set_icon_name(volume_icon(p.volume, p.muted));
+    compact.set_tooltip_text(Some("Volume"));
+    compact.add_css_class("icon-button");
+    compact.set_visible(false);
+    let pop = gtk::Popover::new();
+    let col = widgets::vbox(8);
+    col.add_css_class("volume-popover");
+    let vertical = gtk::Scale::with_range(gtk::Orientation::Vertical, 0.0, player::max_volume(), 0.01);
+    vertical.set_inverted(true);
+    vertical.set_draw_value(false);
+    vertical.set_value(p.volume);
+    vertical.set_size_request(-1, 140);
+    vertical.add_css_class("volume");
+    vertical.set_halign(gtk::Align::Center);
+    vertical.connect_change_value(|_, _, v| {
+        player::set_volume(v);
+        if prefs::get().muted && v > 0.0 {
+            player::set_muted(false);
+        }
+        glib::Propagation::Proceed
+    });
+    let pop_mute = widgets::icon_button(volume_icon(p.volume, p.muted), "Mute");
+    pop_mute.connect_clicked(|_| player::set_muted(!prefs::get().muted));
+    col.append(&vertical);
+    col.append(&pop_mute);
+    pop.set_child(Some(&col));
+    compact.set_popover(Some(&pop));
+    right.append(&compact);
     bar.append(&right);
-    NARROW_PARTS.with(|n| n.borrow_mut().push(volume.clone().upcast()));
+    NARROW_PARTS.with(|n| n.borrow_mut().extend([volume.clone().upcast(), mute.clone().upcast()]));
+    NARROW_ONLY.with(|n| n.borrow_mut().push(compact.clone().upcast()));
 
     // ----- Wiring -----
     play.connect_clicked(|_| player::toggle());
@@ -157,6 +195,7 @@ pub fn build() -> gtk::Box {
             next.clone(),
             close.clone(),
         );
+        let (compact, pop_mute, vertical) = (compact.clone(), pop_mute.clone(), vertical.clone());
         move |e: Event| match e {
             Event::Track | Event::Video => {
                 match player::current() {
@@ -194,6 +233,14 @@ pub fn build() -> gtk::Box {
             Event::Options => {
                 let p = prefs::get();
                 mute.set_icon_name(volume_icon(p.volume, p.muted));
+                compact.set_icon_name(volume_icon(p.volume, p.muted));
+                pop_mute.set_icon_name(volume_icon(p.volume, p.muted));
+                if (vertical.adjustment().upper() - player::max_volume()).abs() > 0.001 {
+                    vertical.set_range(0.0, player::max_volume());
+                }
+                if (vertical.value() - p.volume).abs() > 0.005 {
+                    vertical.set_value(p.volume);
+                }
                 mute.set_tooltip_text(Some(if p.muted { "Unmute" } else { "Mute" }));
                 if (volume.adjustment().upper() - player::max_volume()).abs() > 0.001 {
                     volume.set_range(0.0, player::max_volume());

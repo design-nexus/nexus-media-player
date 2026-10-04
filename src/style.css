@@ -839,6 +839,25 @@ window.media-window button.icon-button:hover {
   color: @theme_text;
 }
 
+window.media-window menubutton.icon-button > button {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: 999px;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  color: alpha(@theme_text, 0.85);
+}
+
+window.media-window menubutton.icon-button > button:hover {
+  color: @theme_text;
+}
+
+.volume-popover {
+  padding: 6px 2px;
+}
+
 window.media-window button.icon-button:disabled {
   opacity: 0.4;
 }
