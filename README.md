@@ -9,8 +9,9 @@ from your Omarchy theme and fits a half-screen tile.
 - **Library:** scans your video folders (MKV, MP4, WebM, AVI, MOV, WMV, TS, MPEG, OGV and
   more) into a local database. Later scans only read new or changed files, and it picks
   up videos added, removed or renamed within a minute.
-  - **Home:** Continue watching, the next episode of each show you're following, and
-    what was added lately.
+  - **Home:** what you were last watching in a banner over its backdrop, Continue
+    watching (with Remove from Continue watching), the next episode of each show you're
+    following, and what was added lately.
   - **Movies:** a poster grid, sorted by title, year, date added or rating, with
     watched and unwatched filters (both remembered). Each movie has a page with its details and file info.
   - **TV shows:** shows, seasons (with Play season) and episodes (with Mark watched up
