@@ -27,15 +27,25 @@ from your Omarchy theme and fits a half-screen tile.
 - **Playback** with mpv: hardware decoding, every format mpv plays, and speed from
   0.25× to 3× with the pitch kept.
   - **Resume:** each video starts where it was stopped and is marked watched near the
-    end. The next episode starts when one ends.
-  - **Seeking:** <kbd>←</kbd>/<kbd>→</kbd>, two-finger swipes on a touchpad, and a
-    seek bar that previews the frame under the pointer.
+    end. Near the end (or once a Credits chapter starts) an Up next card counts down
+    to the next episode, with Play now and Cancel.
+  - **Seeking:** <kbd>←</kbd>/<kbd>→</kbd>, <kbd>0</kbd>–<kbd>9</kbd> for a tenth of the
+    way through, two-finger swipes on a touchpad, and a seek bar that previews the
+    frame under the pointer. Chapters show as ticks on the seek bar, in a Chapters menu,
+    and with <kbd>Page Up</kbd>/<kbd>Page Down</kbd>. Click the length to see the time
+    left; the player also says when the video will end.
   - **Subtitles:** picked up from files beside the video (`.srt`, `.ass`, `.vtt`…) or
-    loaded by hand, with styled ASS, a delay you can nudge, and a size setting. Each
-    video remembers its subtitle and sound tracks.
+    loaded by hand, with styled ASS, a delay you can nudge, a size setting and an
+    optional dark background. They move up out of the way while the controls show.
+    Each video remembers its subtitle and sound tracks.
+  - **Picture:** override the shape (16:9, 4:3, 2.35:1…), fill the window, turn it, or
+    deinterlace it.
   - **Sound:** a delay for videos whose sound is out of step, night mode to even out
     loud and quiet parts, and an optional boost up to 150%.
-  - Fullscreen, frame stepping, and controls that fade away while the video plays.
+  - Fullscreen, frame stepping, controls that fade away while the video plays, and
+    <kbd>Ctrl</kbd>+<kbd>S</kbd> to save the frame on screen to your pictures folder.
+  - **Web addresses** (<kbd>Ctrl</kbd>+<kbd>L</kbd>): streams, and video pages through
+    yt-dlp when it's installed.
   - The screen stays awake while a video plays.
 - **Drag and drop:** drop videos, folders or M3U playlists on the window to play them
   (hold <kbd>Shift</kbd> to add them to the queue).
@@ -78,6 +88,8 @@ media-player [OPTIONS] [FILES…]
 | --- | --- |
 | <kbd>Space</kbd> | Play or pause |
 | <kbd>←</kbd> / <kbd>→</kbd> | Back / forward 5 seconds (<kbd>Shift</kbd>: 30 seconds) |
+| <kbd>0</kbd>–<kbd>9</kbd> | Jump to that tenth of the video |
+| <kbd>Page Up</kbd> / <kbd>Page Down</kbd> | Previous / next chapter |
 | <kbd>Ctrl</kbd>+<kbd>←</kbd> / <kbd>→</kbd> | Previous / next video |
 | <kbd>↑</kbd> / <kbd>↓</kbd> | Louder / quieter |
 | <kbd>F</kbd>, <kbd>Esc</kbd> | Fullscreen, leave fullscreen |
@@ -89,6 +101,9 @@ media-player [OPTIONS] [FILES…]
 | <kbd>[</kbd> / <kbd>]</kbd> | Slower / faster |
 | <kbd>,</kbd> / <kbd>.</kbd> | Back / forward one frame |
 | <kbd>Ctrl</kbd>+<kbd>O</kbd> | Open files |
+| <kbd>Ctrl</kbd>+<kbd>L</kbd> | Open a web address |
+| <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save the frame as a picture |
+| <kbd>?</kbd> | All keyboard shortcuts |
 | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Search the library |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | Close |
 
