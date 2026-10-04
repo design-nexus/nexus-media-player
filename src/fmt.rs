@@ -34,6 +34,12 @@ pub fn delay(secs: f64) -> String {
     if secs.abs() < 0.05 { "0 s".into() } else { format!("{secs:+.1} s") }
 }
 
+/// A small offset in milliseconds: "+50 ms", "0 ms".
+pub fn delay_ms(secs: f64) -> String {
+    let ms = (secs * 1000.0).round() as i64;
+    if ms == 0 { "0 ms".into() } else { format!("{ms:+} ms") }
+}
+
 /// A file size: 812 MB, 4.2 GB.
 pub fn size(bytes: i64) -> String {
     let b = bytes.max(0) as f64;

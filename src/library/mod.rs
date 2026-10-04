@@ -63,6 +63,8 @@ pub struct Watch {
     /// The subtitle track picked last time; `Some(0)` means subtitles off.
     pub sid: Option<i64>,
     pub sub_delay: f64,
+    /// Sound against picture, in seconds (positive: sound later).
+    pub audio_delay: f64,
 }
 
 #[derive(Debug, Clone, Default, PartialEq)]

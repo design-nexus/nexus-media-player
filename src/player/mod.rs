@@ -158,6 +158,7 @@ struct Player {
     video_size: (i32, i32),
     speed: f64,
     sub_delay: f64,
+    audio_delay: f64,
     buffering: bool,
     /// Between `loadfile` and FILE_LOADED.
     loading: bool,
@@ -263,7 +264,7 @@ fn options() -> Vec<(String, String)> {
         ("audio-file-auto", "no"),
         ("audio-client-name", "nexus-media-player"),
         ("save-position-on-quit", "no"),
-        ("reset-on-next-file", "speed,sub-delay"),
+        ("reset-on-next-file", "speed,sub-delay,audio-delay"),
         ("volume-max", "150"),
     ]
     .iter()
@@ -308,6 +309,7 @@ pub fn init() {
             ("dheight", mpv::FORMAT_INT64),
             ("speed", mpv::FORMAT_DOUBLE),
             ("sub-delay", mpv::FORMAT_DOUBLE),
+            ("audio-delay", mpv::FORMAT_DOUBLE),
             ("paused-for-cache", mpv::FORMAT_FLAG),
         ] {
             m.observe(name, format);
@@ -330,6 +332,7 @@ pub fn init() {
             video_size: (0, 0),
             speed: 1.0,
             sub_delay: 0.0,
+            audio_delay: 0.0,
             buffering: false,
             loading: false,
             ended: false,
@@ -439,6 +442,10 @@ pub fn speed() -> f64 {
 
 pub fn sub_delay() -> f64 {
     with(|p| p.sub_delay).unwrap_or(0.0)
+}
+
+pub fn audio_delay() -> f64 {
+    with(|p| p.audio_delay).unwrap_or(0.0)
 }
 
 pub fn buffering() -> bool {
@@ -612,6 +619,10 @@ fn on_property(name: &str, data: Data) {
             with(|p| p.sub_delay = s);
             emit(Event::Tracks);
         }
+        ("audio-delay", Data::Double(s)) => {
+            with(|p| p.audio_delay = s);
+            emit(Event::Tracks);
+        }
         ("paused-for-cache", Data::Flag(b)) => {
             with(|p| p.buffering = b);
             emit(Event::Buffering);
@@ -718,6 +729,9 @@ fn load_current(play: bool) {
     }
     if w.sub_delay.abs() > 0.001 {
         opts.push(format!("sub-delay={:.2}", w.sub_delay));
+    }
+    if w.audio_delay.abs() > 0.001 {
+        opts.push(format!("audio-delay={:.2}", w.audio_delay));
     }
     if (p.speed - 1.0).abs() > 0.001 {
         opts.push(format!("speed={:.2}", p.speed));
@@ -1126,6 +1140,22 @@ pub fn set_sub_delay(secs: f64) {
 pub fn nudge_sub_delay(delta: f64) {
     set_sub_delay(sub_delay() + delta);
     window::flash(&format!("Subtitles {}", crate::fmt::delay(sub_delay())));
+}
+
+/// Move the sound against the picture; remembered for this video.
+pub fn set_audio_delay(secs: f64) {
+    let secs = (secs * 20.0).round() / 20.0;
+    with_mpv(|m| m.set_f64("audio-delay", secs));
+    with(|p| p.audio_delay = secs);
+    if let Some(v) = current() {
+        store::update_watch(&v, |w| w.audio_delay = secs);
+    }
+    emit(Event::Tracks);
+}
+
+pub fn nudge_audio_delay(delta: f64) {
+    set_audio_delay(audio_delay() + delta);
+    window::flash(&format!("Sound {}", crate::fmt::delay_ms(audio_delay())));
 }
 
 pub fn set_sub_scale(scale: f64) {

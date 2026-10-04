@@ -105,6 +105,37 @@ fn menu_button(icon: &str, tooltip: &str, fill: impl Fn(&gtk::Box, &gtk::Popover
     mb
 }
 
+/// A popover row: Delay  −  value  +
+fn delay_row(
+    tips: (&str, &str),
+    step: f64,
+    get: fn() -> f64,
+    set: fn(f64),
+    show: fn(f64) -> String,
+) -> gtk::Box {
+    let row = widgets::hbox(6);
+    row.add_css_class("menu-row");
+    let l = widgets::label("Delay", "");
+    l.set_hexpand(true);
+    row.append(&l);
+    let minus = widgets::icon_button("list-remove-symbolic", tips.0);
+    let value = widgets::label(&show(get()), "value-readout");
+    value.set_width_chars(7);
+    value.set_xalign(0.5);
+    let plus = widgets::icon_button("list-add-symbolic", tips.1);
+    for (b, d) in [(&minus, -step), (&plus, step)] {
+        let v = value.clone();
+        b.connect_clicked(move |_| {
+            set(get() + d);
+            v.set_text(&show(get()));
+        });
+    }
+    row.append(&minus);
+    row.append(&value);
+    row.append(&plus);
+    row
+}
+
 fn speed_menu(content: &gtk::Box, pop: &gtk::Popover) {
     content.append(&widgets::label("SPEED", "popover-heading"));
     let now = player::speed();
@@ -137,6 +168,13 @@ fn audio_menu(content: &gtk::Box, pop: &gtk::Popover) {
         }));
     }
     content.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+    content.append(&delay_row(
+        ("Sound earlier (Ctrl+−)", "Sound later (Ctrl++)"),
+        0.05,
+        player::audio_delay,
+        player::set_audio_delay,
+        fmt::delay_ms,
+    ));
     let night = prefs::get().night_mode;
     let p = pop.clone();
     content.append(&choice("Night mode", "N", night, move || {
@@ -176,31 +214,7 @@ fn subtitle_menu(content: &gtk::Box, pop: &gtk::Popover) {
     content.append(&load);
     content.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
 
-    // Delay: − value +
-    let delay = widgets::hbox(6);
-    delay.add_css_class("menu-row");
-    let l = widgets::label("Delay", "");
-    l.set_hexpand(true);
-    delay.append(&l);
-    let minus = widgets::icon_button("list-remove-symbolic", "Earlier (Z)");
-    let value = widgets::label(&fmt::delay(player::sub_delay()), "value-readout");
-    value.set_width_chars(7);
-    value.set_xalign(0.5);
-    let plus = widgets::icon_button("list-add-symbolic", "Later (X)");
-    let v = value.clone();
-    minus.connect_clicked(move |_| {
-        player::set_sub_delay(player::sub_delay() - 0.1);
-        v.set_text(&fmt::delay(player::sub_delay()));
-    });
-    let v = value.clone();
-    plus.connect_clicked(move |_| {
-        player::set_sub_delay(player::sub_delay() + 0.1);
-        v.set_text(&fmt::delay(player::sub_delay()));
-    });
-    delay.append(&minus);
-    delay.append(&value);
-    delay.append(&plus);
-    content.append(&delay);
+    content.append(&delay_row(("Earlier (Z)", "Later (X)"), 0.1, player::sub_delay, player::set_sub_delay, fmt::delay));
 
     // Size
     let size = widgets::hbox(6);
@@ -446,7 +460,7 @@ pub fn build(page: &Page) {
     speed_label.add_css_class("mono");
     row.append(&speed_label);
     let speed = menu_button("nmp-speed-symbolic", "Speed ([ and ])", speed_menu);
-    let audio = menu_button("nmp-audio-track-symbolic", "Sound track (A)", audio_menu);
+    let audio = menu_button("nmp-audio-track-symbolic", "Sound: track, sync and night mode (A)", audio_menu);
     let subs = menu_button("nmp-subtitles-symbolic", "Subtitles (S)", subtitle_menu);
     let full = widgets::icon_button("view-fullscreen-symbolic", "Fullscreen (F)");
     full.add_css_class("osd-button");
@@ -680,7 +694,7 @@ pub fn build(page: &Page) {
                 if !has_subs {
                     subs.add_css_class("dim");
                 }
-                audio.set_sensitive(player::tracks(TrackKind::Audio).len() > 1);
+                audio.set_sensitive(player::current().is_some());
             }
             Event::Position | Event::Seeked => {}
         }

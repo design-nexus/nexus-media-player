@@ -375,6 +375,14 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
                     player::previous();
                     stop
                 }
+                gdk::Key::minus | gdk::Key::KP_Subtract if !typing => {
+                    player::nudge_audio_delay(-0.05);
+                    stop
+                }
+                gdk::Key::plus | gdk::Key::equal | gdk::Key::KP_Add if !typing => {
+                    player::nudge_audio_delay(0.05);
+                    stop
+                }
                 gdk::Key::Right if !typing => {
                     player::next();
                     stop

@@ -48,7 +48,8 @@ CREATE TABLE IF NOT EXISTS watch (
     plays INTEGER NOT NULL DEFAULT 0,
     aid INTEGER,
     sid INTEGER,
-    sub_delay REAL NOT NULL DEFAULT 0
+    sub_delay REAL NOT NULL DEFAULT 0,
+    audio_delay REAL NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS shows (
     key TEXT PRIMARY KEY,
@@ -111,6 +112,9 @@ fn migrate(conn: &Connection) -> Result<()> {
         let names = stmt.query_map([], |r| r.get::<_, String>(1))?.collect::<rusqlite::Result<Vec<_>>>()?;
         Ok(names.iter().any(|n| n == column))
     };
+    if !has("watch", "audio_delay")? {
+        conn.execute_batch("ALTER TABLE watch ADD COLUMN audio_delay REAL NOT NULL DEFAULT 0")?;
+    }
     if !has("videos", "backdrop")? {
         // Read movies again on the next scan so their backdrops are found.
         conn.execute_batch(
@@ -130,7 +134,7 @@ pub fn load_all(conn: &Connection) -> Result<Vec<Video>> {
         "SELECT v.id, v.path, v.kind, v.title, v.year, v.show, v.season, v.episode, v.plot, v.rating, v.genres,
                 v.duration, v.width, v.height, v.vcodec, v.acodec, v.audio_langs, v.sub_langs, v.poster, v.still,
                 v.tmdb_id, v.added, v.mtime, v.size,
-                w.position, w.watched, w.last_played, w.plays, w.aid, w.sid, w.sub_delay, v.backdrop
+                w.position, w.watched, w.last_played, w.plays, w.aid, w.sid, w.sub_delay, v.backdrop, w.audio_delay
          FROM videos v LEFT JOIN watch w ON w.path = v.path",
     )?;
     let rows = stmt.query_map([], |r| {
@@ -142,6 +146,7 @@ pub fn load_all(conn: &Connection) -> Result<Vec<Video>> {
             aid: r.get(28)?,
             sid: r.get(29)?,
             sub_delay: r.get::<_, Option<f64>>(30)?.unwrap_or(0.0),
+            audio_delay: r.get::<_, Option<f64>>(32)?.unwrap_or(0.0),
         };
         Ok(Video {
             id: r.get(0)?,
@@ -252,12 +257,12 @@ pub fn set_still(conn: &Connection, path: &Path, key: &str) -> Result<()> {
 
 pub fn save_watch(conn: &Connection, path: &Path, w: &Watch) -> Result<()> {
     conn.execute(
-        "INSERT INTO watch (path, position, watched, last_played, plays, aid, sid, sub_delay)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+        "INSERT INTO watch (path, position, watched, last_played, plays, aid, sid, sub_delay, audio_delay)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
          ON CONFLICT(path) DO UPDATE SET position = excluded.position, watched = excluded.watched,
             last_played = excluded.last_played, plays = excluded.plays, aid = excluded.aid, sid = excluded.sid,
-            sub_delay = excluded.sub_delay",
-        params![text(path), w.position, w.watched, w.last_played, w.plays, w.aid, w.sid, w.sub_delay],
+            sub_delay = excluded.sub_delay, audio_delay = excluded.audio_delay",
+        params![text(path), w.position, w.watched, w.last_played, w.plays, w.aid, w.sid, w.sub_delay, w.audio_delay],
     )?;
     Ok(())
 }
@@ -265,7 +270,7 @@ pub fn save_watch(conn: &Connection, path: &Path, w: &Watch) -> Result<()> {
 pub fn load_watch(conn: &Connection, path: &Path) -> Result<Option<Watch>> {
     Ok(conn
         .query_row(
-            "SELECT position, watched, last_played, plays, aid, sid, sub_delay FROM watch WHERE path = ?1",
+            "SELECT position, watched, last_played, plays, aid, sid, sub_delay, audio_delay FROM watch WHERE path = ?1",
             [text(path)],
             |r| {
                 Ok(Watch {
@@ -276,6 +281,7 @@ pub fn load_watch(conn: &Connection, path: &Path) -> Result<Option<Watch>> {
                     aid: r.get(4)?,
                     sid: r.get(5)?,
                     sub_delay: r.get(6)?,
+                    audio_delay: r.get(7)?,
                 })
             },
         )
