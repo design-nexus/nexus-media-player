@@ -31,6 +31,11 @@ pub struct Prefs {
     pub sidebar_collapsed: bool,
     pub glow: bool,
     pub last_section: String,
+    /// How the Movies and TV shows grids were last sorted and filtered.
+    pub movies_sort: String,
+    pub movies_filter: String,
+    pub shows_sort: String,
+    pub shows_filter: String,
     /// Folders the library is built from.
     pub library_folders: Vec<String>,
     /// Rescan when files are added, removed or renamed.
@@ -94,6 +99,10 @@ impl Default for Prefs {
             sidebar_collapsed: false,
             glow: true,
             last_section: "home".into(),
+            movies_sort: "title".into(),
+            movies_filter: "all".into(),
+            shows_sort: "title".into(),
+            shows_filter: "all".into(),
             library_folders: vec![paths::videos_dir().to_string_lossy().into_owned()],
             watch: true,
             frames: true,

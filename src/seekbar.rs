@@ -139,11 +139,7 @@ impl SeekBar {
                     seek.set_range(0.0, d.max(1.0));
                 }
                 let p = player::position();
-                dur.set_text(&if prefs::get().time_left && d > 0.0 {
-                    format!("−{}", fmt::time(d - p))
-                } else {
-                    fmt::time(d)
-                });
+                dur.set_text(&if prefs::get().time_left && d > 0.0 { format!("−{}", fmt::time(d - p)) } else { fmt::time(d) });
                 seek.set_value(p);
                 pos.set_text(&fmt::time(p));
                 seek.set_sensitive(player::current().is_some());

@@ -6,7 +6,7 @@ use crate::library::art::Art;
 use crate::library::store::{self, Show};
 use crate::views::{self, Item, PosterGrid};
 use crate::widgets::{self, Page};
-use crate::{fmt, menu, window};
+use crate::{fmt, menu, prefs, window};
 use gtk::prelude::*;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -20,8 +20,8 @@ struct Ui {
 
 thread_local! {
     static UI: RefCell<Option<Ui>> = const { RefCell::new(None) };
-    static SORT: RefCell<String> = RefCell::new("title".into());
-    static FILTER: RefCell<String> = RefCell::new("all".into());
+    static SORT: RefCell<String> = RefCell::new(prefs::get().shows_sort);
+    static FILTER: RefCell<String> = RefCell::new(prefs::get().shows_filter);
 }
 
 fn sorted(mut v: Vec<Rc<Show>>) -> Vec<Rc<Show>> {
@@ -65,16 +65,22 @@ pub fn build(page: &Page) {
         })
     };
     let r = refresh.clone();
-    toolbar.append(&widgets::segmented(&widgets::opts(&[("all", "All"), ("unwatched", "Unwatched")]), "all", move |id| {
-        FILTER.with(|f| *f.borrow_mut() = id);
-        r();
-    }));
+    toolbar.append(&widgets::segmented(
+        &widgets::opts(&[("all", "All"), ("unwatched", "Unwatched")]),
+        &FILTER.with(|f| f.borrow().clone()),
+        move |id| {
+            prefs::update(|p| p.shows_filter = id.clone());
+            FILTER.with(|f| *f.borrow_mut() = id);
+            r();
+        },
+    ));
     let sort_opts = widgets::opts(&[("title", "Title"), ("added", "Recently added"), ("watched", "Recently watched")]);
-    let sort = widgets::dropdown(&sort_opts, "title");
+    let sort = widgets::dropdown(&sort_opts, &SORT.with(|s| s.borrow().clone()));
     sort.set_tooltip_text(Some("Sort by"));
     let r = refresh.clone();
     sort.connect_selected_notify(move |d| {
         if let Some((id, _)) = sort_opts.get(d.selected() as usize) {
+            prefs::update(|p| p.shows_sort = id.clone());
             SORT.with(|s| *s.borrow_mut() = id.clone());
             r();
         }

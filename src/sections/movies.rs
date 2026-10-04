@@ -19,8 +19,8 @@ struct Ui {
 
 thread_local! {
     static UI: RefCell<Option<Ui>> = const { RefCell::new(None) };
-    static SORT: RefCell<String> = RefCell::new("title".into());
-    static FILTER: RefCell<String> = RefCell::new("all".into());
+    static SORT: RefCell<String> = RefCell::new(prefs::get().movies_sort);
+    static FILTER: RefCell<String> = RefCell::new(prefs::get().movies_filter);
 }
 
 fn sorted(mut v: Vec<Rc<Video>>) -> Vec<Rc<Video>> {
@@ -75,19 +75,21 @@ pub fn build(page: &Page) {
     let r = refresh.clone();
     let filter = widgets::segmented(
         &widgets::opts(&[("all", "All"), ("unwatched", "Unwatched"), ("watched", "Watched")]),
-        "all",
+        &FILTER.with(|f| f.borrow().clone()),
         move |id| {
+            prefs::update(|p| p.movies_filter = id.clone());
             FILTER.with(|f| *f.borrow_mut() = id);
             r();
         },
     );
     toolbar.append(&filter);
     let sort_opts = widgets::opts(&[("title", "Title"), ("year", "Year"), ("added", "Recently added"), ("rating", "Rating")]);
-    let sort = widgets::dropdown(&sort_opts, "title");
+    let sort = widgets::dropdown(&sort_opts, &SORT.with(|s| s.borrow().clone()));
     sort.set_tooltip_text(Some("Sort by"));
     let r = refresh.clone();
     sort.connect_selected_notify(move |d| {
         if let Some((id, _)) = sort_opts.get(d.selected() as usize) {
+            prefs::update(|p| p.movies_sort = id.clone());
             SORT.with(|s| *s.borrow_mut() = id.clone());
             r();
         }

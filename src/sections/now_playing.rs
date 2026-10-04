@@ -108,13 +108,7 @@ fn menu_button(icon: &str, tooltip: &str, fill: impl Fn(&gtk::Box, &gtk::Popover
 }
 
 /// A popover row: Delay  −  value  +
-fn delay_row(
-    tips: (&str, &str),
-    step: f64,
-    get: fn() -> f64,
-    set: fn(f64),
-    show: fn(f64) -> String,
-) -> gtk::Box {
+fn delay_row(tips: (&str, &str), step: f64, get: fn() -> f64, set: fn(f64), show: fn(f64) -> String) -> gtk::Box {
     let row = widgets::hbox(6);
     row.add_css_class("menu-row");
     let l = widgets::label("Delay", "");
@@ -369,11 +363,7 @@ impl UpNext {
     /// When the credits start: a chapter named like "Credits" near the end.
     fn credits_at() -> Option<f64> {
         let d = player::duration();
-        player::chapters()
-            .iter()
-            .rev()
-            .find(|(t, name)| *t > d * 0.8 && name.to_lowercase().contains("credit"))
-            .map(|(t, _)| *t)
+        player::chapters().iter().rev().find(|(t, name)| *t > d * 0.8 && name.to_lowercase().contains("credit")).map(|(t, _)| *t)
     }
 
     fn update(&self) {
