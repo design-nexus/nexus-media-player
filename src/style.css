@@ -1157,7 +1157,22 @@ window.media-window .player-info:hover button.bar-close {
 }
 
 .detail-meta {
-  font-size: 0.86em;
+  margin: 2px 0;
+}
+
+.chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.8em;
+  font-weight: 700;
+  color: alpha(@theme_text, 0.88);
+  background: alpha(@theme_muted, 0.75);
+  border: 1px solid alpha(@theme_border, 0.6);
+}
+
+.chip.rating {
+  color: @theme_accent;
+  border-color: alpha(@theme_accent, 0.45);
 }
 
 .detail-genres {

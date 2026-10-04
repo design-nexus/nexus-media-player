@@ -438,7 +438,8 @@ pub struct Header {
     pub root: gtk::Overlay,
     backdrop: gtk::Picture,
     pub title: gtk::Label,
-    pub meta: gtk::Label,
+    /// Year, runtime, quality, rating… as small chips.
+    pub meta: gtk::Box,
     pub genres: gtk::Label,
     pub plot: gtk::Label,
     pub actions: gtk::Box,
@@ -476,10 +477,8 @@ pub fn detail_header(art: Art, kicker: &str) -> Header {
     title.set_lines(3);
     title.set_ellipsize(gtk::pango::EllipsizeMode::End);
     text.append(&title);
-    let meta = widgets::label("", "dim");
-    meta.add_css_class("mono");
+    let meta = widgets::hbox(6);
     meta.add_css_class("detail-meta");
-    meta.set_wrap(true);
     text.append(&meta);
     let genres = widgets::label("", "detail-genres");
     genres.set_wrap(true);
@@ -498,9 +497,18 @@ pub fn detail_header(art: Art, kicker: &str) -> Header {
 }
 
 impl Header {
-    pub fn set_text(&self, title: &str, meta: &str, genres: &str, plot: &str) {
+    pub fn set_text(&self, title: &str, meta: &[String], genres: &str, plot: &str) {
         self.title.set_text(title);
-        self.meta.set_text(meta);
+        while let Some(c) = self.meta.first_child() {
+            self.meta.remove(&c);
+        }
+        for part in meta {
+            let chip = widgets::label(part, "chip");
+            if part.starts_with('★') {
+                chip.add_css_class("rating");
+            }
+            self.meta.append(&chip);
+        }
         self.meta.set_visible(!meta.is_empty());
         self.genres.set_text(genres);
         self.genres.set_visible(!genres.is_empty());
@@ -522,8 +530,8 @@ impl Header {
     }
 }
 
-/// "2019 · 2 h 12 min · 1080p · ★ 7.8"
-pub fn video_meta(v: &Video) -> String {
+/// ["2019", "2 h 12 min", "1080p", "★ 7.8"]
+pub fn video_meta(v: &Video) -> Vec<String> {
     let mut parts = Vec::new();
     if let Some(y) = v.year {
         parts.push(y.to_string());
@@ -538,5 +546,5 @@ pub fn video_meta(v: &Video) -> String {
     if let Some(r) = v.rating {
         parts.push(format!("★ {r:.1}"));
     }
-    parts.join(" · ")
+    parts
 }
