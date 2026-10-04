@@ -884,6 +884,8 @@ pub fn build(page: &Page) {
                 }
                 show_sub();
                 top.set_visible(cur.is_some());
+                // Nothing to control with nothing loaded.
+                controls.set_visible(cur.is_some());
                 close.set_sensitive(cur.is_some());
                 prev.set_sensitive(player::can_previous());
                 next.set_sensitive(player::can_next());

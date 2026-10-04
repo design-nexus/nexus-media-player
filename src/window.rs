@@ -230,6 +230,13 @@ fn build(app: &gtk::Application) {
     content.append(&stack);
     let bar = playerbar::build();
     content.append(&bar);
+    // The bar is only there while something is loaded.
+    bar.set_visible(false);
+    player::subscribe(&bar, |e| {
+        if e == player::Event::Track {
+            update_bar();
+        }
+    });
 
     let body = gtk::Box::new(gtk::Orientation::Horizontal, 0);
     body.append(&nav);
@@ -738,12 +745,18 @@ pub fn set_fullscreen(on: bool) {
     apply_fullscreen(on);
 }
 
+fn update_bar() {
+    let Some(ui) = ui() else { return };
+    let u = ui.borrow();
+    u.bar.set_visible(u.current != "now-playing" && !u.window.is_fullscreen() && player::current().is_some());
+}
+
 /// Fullscreen shows only the player: no sidebar, no player bar.
 fn apply_fullscreen(on: bool) {
     let Some(ui) = ui() else { return };
     let u = ui.borrow();
     u.nav.set_visible(!on);
-    u.bar.set_visible(!on && u.current != "now-playing");
+    u.bar.set_visible(!on && u.current != "now-playing" && player::current().is_some());
     if on {
         u.window.add_css_class("fullscreen");
     } else {
@@ -871,7 +884,7 @@ pub fn navigate(id: &str) {
     u.current = id.clone();
     // The player has its own controls; the bar is for everywhere else.
     let full = u.window.is_fullscreen();
-    u.bar.set_visible(id != "now-playing" && !full);
+    u.bar.set_visible(id != "now-playing" && !full && player::current().is_some());
     let search = u.search.clone();
     let leaving_player = full && id != "now-playing";
     drop(u);
