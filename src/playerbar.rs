@@ -70,6 +70,12 @@ pub fn build() -> gtk::Box {
     text.append(&title);
     text.append(&sub);
     info.append(&text);
+    // Close sits with what it closes, away from the volume.
+    let close = widgets::icon_button("window-close-symbolic", "Close video");
+    close.add_css_class("bar-close");
+    close.set_valign(gtk::Align::Center);
+    close.set_focus_on_click(false);
+    info.append(&close);
     let click = gtk::GestureClick::new();
     click.connect_released(|_, _, _, _| window::navigate("now-playing"));
     info.add_controller(click);
@@ -101,9 +107,6 @@ pub fn build() -> gtk::Box {
     let right = widgets::hbox(8);
     right.set_valign(gtk::Align::Center);
     right.set_halign(gtk::Align::End);
-    let close = widgets::icon_button("window-close-symbolic", "Close video");
-    close.set_focus_on_click(false);
-    right.append(&close);
     let p = prefs::get();
     let mute = widgets::icon_button(volume_icon(p.volume, p.muted), "Mute");
     mute.set_focus_on_click(false);

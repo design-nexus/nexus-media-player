@@ -1071,6 +1071,15 @@ window.fullscreen .up-next {
   font-size: 1.05em;
 }
 
+window.media-window button.bar-close {
+  opacity: 0.45;
+  transition: opacity 150ms ease-out;
+}
+
+window.media-window .player-info:hover button.bar-close {
+  opacity: 1;
+}
+
 .drop-hint {
   padding: 18px 28px;
   border-radius: 12px;
