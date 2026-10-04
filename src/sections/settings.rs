@@ -316,6 +316,20 @@ pub fn build(page: &Page) {
     size_box.append(&size);
     size_box.append(&readout);
     g.add(&widgets::row("Subtitle size", "Text subtitles; picture subtitles keep their size.", Some(size_box.upcast_ref())));
+    let (r, _) = widgets::switch_row(
+        "Night mode",
+        "Even out loud and quiet parts so dialogue is clear without loud scenes jumping out (N).",
+        p.night_mode,
+        player::set_night_mode,
+    );
+    g.add(&r);
+    let (r, _) = widgets::switch_row(
+        "Volume boost",
+        "Let the volume go up to 150% for quiet videos. Sound may distort near the top.",
+        p.volume_boost,
+        player::set_volume_boost,
+    );
+    g.add(&r);
 
     // ----- Online details -----
     let g = page.group("Online details");

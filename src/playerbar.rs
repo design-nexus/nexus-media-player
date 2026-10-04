@@ -108,7 +108,7 @@ pub fn build() -> gtk::Box {
     let mute = widgets::icon_button(volume_icon(p.volume, p.muted), "Mute");
     mute.set_focus_on_click(false);
     right.append(&mute);
-    let volume = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 1.0, 0.01);
+    let volume = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, player::max_volume(), 0.01);
     volume.set_draw_value(false);
     volume.set_value(p.volume);
     volume.set_size_request(100, -1);
@@ -126,7 +126,7 @@ pub fn build() -> gtk::Box {
     close.connect_clicked(|_| player::close());
     mute.connect_clicked(|_| player::set_muted(!prefs::get().muted));
     volume.connect_change_value(|s, _, v| {
-        let v = v.clamp(0.0, 1.0);
+        let v = v.clamp(0.0, player::max_volume());
         player::set_volume(v);
         if prefs::get().muted && v > 0.0 {
             player::set_muted(false);
@@ -136,7 +136,7 @@ pub fn build() -> gtk::Box {
     });
     let scroll = gtk::EventControllerScroll::new(gtk::EventControllerScrollFlags::VERTICAL);
     scroll.connect_scroll(|_, _, dy| {
-        player::set_volume((prefs::get().volume - dy * 0.05).clamp(0.0, 1.0));
+        player::set_volume(prefs::get().volume - dy * 0.05);
         glib::Propagation::Stop
     });
     mute.add_controller(scroll);
@@ -192,6 +192,9 @@ pub fn build() -> gtk::Box {
                 let p = prefs::get();
                 mute.set_icon_name(volume_icon(p.volume, p.muted));
                 mute.set_tooltip_text(Some(if p.muted { "Unmute" } else { "Mute" }));
+                if (volume.adjustment().upper() - player::max_volume()).abs() > 0.001 {
+                    volume.set_range(0.0, player::max_volume());
+                }
                 if (volume.value() - p.volume).abs() > 0.005 {
                     volume.set_value(p.volume);
                 }

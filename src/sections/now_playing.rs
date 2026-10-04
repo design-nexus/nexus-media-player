@@ -136,6 +136,13 @@ fn audio_menu(content: &gtk::Box, pop: &gtk::Popover) {
             pop.popdown();
         }));
     }
+    content.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+    let night = prefs::get().night_mode;
+    let p = pop.clone();
+    content.append(&choice("Night mode", "N", night, move || {
+        player::set_night_mode(!night);
+        p.popdown();
+    }));
 }
 
 fn subtitle_menu(content: &gtk::Box, pop: &gtk::Popover) {
@@ -300,7 +307,7 @@ fn on_swipe(swipe: &Rc<RefCell<Swipe>>, dx: f64, dy: f64) {
             }
         }
         Some(false) => {
-            let v = (start_vol - sdy * 0.004).clamp(0.0, 1.0);
+            let v = (start_vol - sdy * 0.004).clamp(0.0, player::max_volume());
             player::set_volume(v);
             if prefs::get().muted && v > 0.0 {
                 player::set_muted(false);
@@ -425,7 +432,7 @@ pub fn build(page: &Page) {
     mute.set_focus_on_click(false);
     mute.set_margin_start(10);
     row.append(&mute);
-    let volume = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 1.0, 0.01);
+    let volume = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, player::max_volume(), 0.01);
     volume.set_draw_value(false);
     volume.set_value(p.volume);
     volume.set_size_request(96, -1);
@@ -479,7 +486,7 @@ pub fn build(page: &Page) {
     }
     mute.connect_clicked(|_| player::set_muted(!prefs::get().muted));
     volume.connect_change_value(|_, _, v| {
-        let v = v.clamp(0.0, 1.0);
+        let v = v.clamp(0.0, player::max_volume());
         player::set_volume(v);
         if prefs::get().muted && v > 0.0 {
             player::set_muted(false);
@@ -575,7 +582,7 @@ pub fn build(page: &Page) {
         w();
         if c.unit() == gdk::ScrollUnit::Wheel {
             if dy != 0.0 {
-                let v = (prefs::get().volume - dy * 0.05).clamp(0.0, 1.0);
+                let v = (prefs::get().volume - dy * 0.05).clamp(0.0, player::max_volume());
                 player::set_volume(v);
                 flash(&format!("Volume {:.0}%", v * 100.0));
             } else if dx != 0.0 {
@@ -658,6 +665,9 @@ pub fn build(page: &Page) {
                 let p = prefs::get();
                 mute.set_icon_name(volume_icon(p.volume, p.muted));
                 mute.set_tooltip_text(Some(if p.muted { "Unmute (M)" } else { "Mute (M)" }));
+                if (volume.adjustment().upper() - player::max_volume()).abs() > 0.001 {
+                    volume.set_range(0.0, player::max_volume());
+                }
                 if (volume.value() - p.volume).abs() > 0.005 {
                     volume.set_value(p.volume);
                 }

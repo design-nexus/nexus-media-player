@@ -395,6 +395,10 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
                 flash(if p.muted { "Sound on" } else { "Muted" });
             }
             gdk::Key::s | gdk::Key::S => cycle_track(player::TrackKind::Sub),
+            gdk::Key::n | gdk::Key::N => {
+                player::set_night_mode(!p.night_mode);
+                flash(if p.night_mode { "Night mode off" } else { "Night mode on" });
+            }
             gdk::Key::a | gdk::Key::A => cycle_track(player::TrackKind::Audio),
             gdk::Key::z | gdk::Key::Z => player::nudge_sub_delay(-0.1),
             gdk::Key::x | gdk::Key::X => player::nudge_sub_delay(0.1),
@@ -446,7 +450,7 @@ fn arrow(key: gdk::Key, shift: bool) {
         }
         _ => {
             let step = if key == gdk::Key::Up { 0.05 } else { -0.05 };
-            let v = (p.volume + step).clamp(0.0, 1.0);
+            let v = (p.volume + step).clamp(0.0, player::max_volume());
             player::set_volume(v);
             if p.muted && step > 0.0 {
                 player::set_muted(false);

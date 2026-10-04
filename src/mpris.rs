@@ -467,7 +467,7 @@ fn handle(app: &gtk::Application, c: Command) {
         }),
         Command::Shuffle(on) => player::set_shuffle(on),
         Command::Volume(v) => {
-            player::set_volume(v.clamp(0.0, 1.0));
+            player::set_volume(v.max(0.0));
             if prefs::get().muted && v > 0.0 {
                 player::set_muted(false);
             }

@@ -225,6 +225,26 @@ fn eq_filter(bands: &[f64; 10], preamp: f64) -> String {
     format!("@eq:lavfi=[{}]", parts.join(","))
 }
 
+/// Quiet parts louder and loud parts quieter, for late nights and dialogue.
+const NIGHT_FILTER: &str = "@night:lavfi=[acompressor=threshold=0.05:ratio=6:attack=5:release=200:makeup=4]";
+
+/// The whole `af` chain the settings ask for: the equalizer, then night mode.
+fn af_chain(p: &prefs::Prefs) -> String {
+    let mut parts = Vec::new();
+    if p.eq_enabled {
+        parts.push(eq_filter(&p.eq_bands, p.eq_preamp));
+    }
+    if p.night_mode {
+        parts.push(NIGHT_FILTER.to_string());
+    }
+    parts.join(",")
+}
+
+/// The loudest the volume goes, as a fraction (1.0 is 100%).
+pub fn max_volume() -> f64 {
+    if prefs::get().volume_boost { 1.5 } else { 1.0 }
+}
+
 fn options() -> Vec<(String, String)> {
     let p = prefs::get();
     let mut o: Vec<(String, String)> = [
@@ -244,6 +264,7 @@ fn options() -> Vec<(String, String)> {
         ("audio-client-name", "nexus-media-player"),
         ("save-position-on-quit", "no"),
         ("reset-on-next-file", "speed,sub-delay"),
+        ("volume-max", "150"),
     ]
     .iter()
     .map(|(k, v)| (k.to_string(), v.to_string()))
@@ -257,8 +278,9 @@ fn options() -> Vec<(String, String)> {
     if !p.sub_lang.is_empty() {
         o.push(("slang".into(), p.sub_lang.clone()));
     }
-    if p.eq_enabled {
-        o.push(("af".into(), eq_filter(&p.eq_bands, p.eq_preamp)));
+    let af = af_chain(&p);
+    if !af.is_empty() {
+        o.push(("af".into(), af));
     }
     // Developer aid: NMP_AO=null plays silently (in real time) for tests.
     if let Some(ao) = std::env::var("NMP_AO").ok().filter(|s| !s.is_empty()) {
@@ -1017,7 +1039,7 @@ pub fn clear() {
 }
 
 pub fn set_volume(v: f64) {
-    let v = v.clamp(0.0, 1.0);
+    let v = v.clamp(0.0, max_volume());
     prefs::update(|p| p.volume = v);
     with_mpv(|m| m.set_f64("volume", v * 100.0));
     emit(Event::Options);
@@ -1112,20 +1134,16 @@ pub fn set_sub_scale(scale: f64) {
     with_mpv(|m| m.set_f64("sub-scale", scale));
 }
 
-/// Push the equalizer settings to mpv: the whole chain when it's switched on
-/// or off, live commands for fader moves.
+/// Push the equalizer and night mode to mpv: the whole chain when either is
+/// switched on or off, live commands for fader moves.
 pub fn apply_eq() {
     let p = prefs::get();
     let current_af = with_mpv(|m| m.get_str("af")).flatten().unwrap_or_default();
-    let has = current_af.contains("@eq");
-    if !p.eq_enabled {
-        if has {
-            with_mpv(|m| m.set_str("af", ""));
-        }
+    if (current_af.contains("@eq"), current_af.contains("@night")) != (p.eq_enabled, p.night_mode) {
+        with_mpv(|m| m.set_str("af", &af_chain(&p)));
         return;
     }
-    if !has {
-        with_mpv(|m| m.set_str("af", &eq_filter(&p.eq_bands, p.eq_preamp)));
+    if !p.eq_enabled {
         return;
     }
     with_mpv(|m| {
@@ -1134,6 +1152,20 @@ pub fn apply_eq() {
         }
         let _ = m.command(&["af-command", "eq", "volume", &format!("{:.1}dB", p.eq_preamp), "volume@pre"]);
     });
+}
+
+pub fn set_night_mode(on: bool) {
+    prefs::update(|p| p.night_mode = on);
+    apply_eq();
+    emit(Event::Options);
+}
+
+pub fn set_volume_boost(on: bool) {
+    prefs::update(|p| p.volume_boost = on);
+    if prefs::get().volume > max_volume() {
+        set_volume(max_volume());
+    }
+    emit(Event::Options);
 }
 
 /// Preferred track languages, for the next videos.

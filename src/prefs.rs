@@ -66,6 +66,10 @@ pub struct Prefs {
     /// 0..1 (what the slider shows; mpv's own curve is cubic).
     pub volume: f64,
     pub muted: bool,
+    /// Let the volume go up to 150%.
+    pub volume_boost: bool,
+    /// Even out loud and quiet parts (a compressor after the equalizer).
+    pub night_mode: bool,
     pub shuffle: bool,
     /// off, all or one.
     pub repeat: String,
@@ -108,6 +112,8 @@ impl Default for Prefs {
             tmdb_language: "en-US".into(),
             volume: 1.0,
             muted: false,
+            volume_boost: false,
+            night_mode: false,
             shuffle: false,
             repeat: "off".into(),
             eq_enabled: false,
