@@ -457,6 +457,8 @@ fn handle(app: &gtk::Application, c: Command) {
         Command::OpenUri(uri) => {
             if let Some(path) = gio::File::for_uri(&uri).path() {
                 player::play_paths(vec![path], 0);
+            } else if uri.starts_with("http://") || uri.starts_with("https://") {
+                player::play_paths(vec![uri.into()], 0);
             }
         }
         Command::Rate(r) => player::set_speed(r),

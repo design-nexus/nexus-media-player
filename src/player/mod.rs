@@ -259,7 +259,8 @@ fn options() -> Vec<(String, String)> {
         ("input-vo-keyboard", "no"),
         ("osc", "no"),
         ("osd-level", "0"),
-        ("ytdl", "no"),
+        // Web addresses (Ctrl+L) go through yt-dlp when it's installed.
+        ("ytdl", if cmd::present("yt-dlp") { "yes" } else { "no" }),
         ("sub-auto", "fuzzy"),
         ("audio-file-auto", "no"),
         ("audio-client-name", "nexus-media-player"),
@@ -1182,6 +1183,30 @@ pub fn apply_eq() {
         }
         let _ = m.command(&["af-command", "eq", "volume", &format!("{:.1}dB", p.eq_preamp), "volume@pre"]);
     });
+}
+
+/// Save the frame on screen as a PNG in the pictures folder.
+pub fn screenshot() {
+    let Some(v) = current() else { return };
+    if !has_video() {
+        window::flash("No picture to capture");
+        return;
+    }
+    let dir = paths::pictures_dir();
+    let _ = std::fs::create_dir_all(&dir);
+    let name: String = v.label().chars().map(|c| if matches!(c, '/' | '\\' | ':') { '-' } else { c }).collect();
+    let mut out = dir.join(format!("{name} {}.png", crate::fmt::time(position()).replace(':', ".")));
+    let mut n = 2;
+    while out.exists() {
+        out = dir.join(format!("{name} {} ({n}).png", crate::fmt::time(position()).replace(':', ".")));
+        n += 1;
+    }
+    let target = out.to_string_lossy().into_owned();
+    match with_mpv(|m| m.command(&["screenshot-to-file", &target, "video"])) {
+        Some(Ok(())) => window::toast(&format!("Saved {}.", paths::pretty(&out))),
+        Some(Err(e)) => window::toast(&format!("Couldn't save the frame: {e}")),
+        None => {}
+    }
 }
 
 /// The seek bars show the time left (or the length).

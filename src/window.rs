@@ -363,6 +363,14 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
                     open_files();
                     stop
                 }
+                gdk::Key::l => {
+                    open_url();
+                    stop
+                }
+                gdk::Key::s if !typing => {
+                    player::screenshot();
+                    stop
+                }
                 gdk::Key::b => {
                     toggle_sidebar();
                     stop
@@ -414,6 +422,14 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
             gdk::Key::bracketright => player::step_speed(true),
             gdk::Key::comma | gdk::Key::less => player::frame_step(false),
             gdk::Key::period | gdk::Key::greater => player::frame_step(true),
+            k if player::current().is_some() && digit(k).is_some() => {
+                let d = player::duration();
+                if d > 0.0 {
+                    let n = digit(k).unwrap_or(0);
+                    player::seek(d * n as f64 / 10.0);
+                    flash(&format!("{}0% · {}", n, crate::fmt::time(d * n as f64 / 10.0)));
+                }
+            }
             gdk::Key::Home if on_player => player::seek(0.0),
             gdk::Key::End if on_player => player::seek(player::duration() - 1.0),
             // On the player page the arrows always drive playback.
@@ -441,6 +457,11 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
         }
     });
     window.add_controller(keys);
+}
+
+/// 0–9 on the main row or the keypad.
+fn digit(key: gdk::Key) -> Option<u32> {
+    key.to_unicode().and_then(|c| c.to_digit(10))
 }
 
 fn arrow(key: gdk::Key, shift: bool) {
@@ -556,6 +577,20 @@ pub fn open_files() {
             player::play_paths(paths, 0);
             navigate("now-playing");
         }
+    });
+}
+
+/// Play a web address: a stream, or a page yt-dlp understands.
+pub fn open_url() {
+    let desc = if crate::cmd::present("yt-dlp") {
+        "A stream, or a video page that yt-dlp understands."
+    } else {
+        "A stream address. Install yt-dlp to play video pages too."
+    };
+    widgets::ask_text("Open address", desc, "", "Play", |text| {
+        let url = if text.contains("://") { text } else { format!("https://{text}") };
+        player::play_paths(vec![url.into()], 0);
+        navigate("now-playing");
     });
 }
 

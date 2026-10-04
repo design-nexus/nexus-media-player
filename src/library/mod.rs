@@ -18,6 +18,11 @@ use std::path::{Path, PathBuf};
 pub const EXTENSIONS: &[&str] =
     &["mkv", "mp4", "m4v", "webm", "avi", "mov", "wmv", "flv", "ts", "m2ts", "mts", "mpg", "mpeg", "ogv", "3gp", "divx", "vob"];
 
+/// A stream or web address (`https://…`) rather than a file.
+pub fn is_url(path: &Path) -> bool {
+    path.to_str().is_some_and(|s| s.split_once("://").is_some_and(|(scheme, _)| !scheme.is_empty() && !scheme.contains('/')))
+}
+
 pub fn is_video(path: &Path) -> bool {
     path.extension().and_then(|e| e.to_str()).is_some_and(|e| EXTENSIONS.contains(&e.to_ascii_lowercase().as_str()))
 }
@@ -108,6 +113,9 @@ pub struct Video {
 
 impl Video {
     pub fn file_uri(&self) -> String {
+        if is_url(&self.path) {
+            return self.path.to_string_lossy().into_owned();
+        }
         gtk::glib::filename_to_uri(&self.path, None).map(|u| u.to_string()).unwrap_or_default()
     }
 

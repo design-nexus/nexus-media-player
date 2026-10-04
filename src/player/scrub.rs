@@ -97,7 +97,7 @@ pub fn prepare(v: &Video) {
         return;
     }
     SHEET.with(|s| *s.borrow_mut() = None);
-    if !prefs::get().scrub || !cmd::present("ffmpeg") {
+    if !prefs::get().scrub || !cmd::present("ffmpeg") || crate::library::is_url(&path) {
         return;
     }
     // One at a time; a newer video takes over when the current one is done.

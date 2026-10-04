@@ -193,6 +193,11 @@ pub fn find(path: &Path) -> Option<Rc<Video>> {
 /// A video for any file: from the library, or named from its path.
 pub fn video_for(path: &Path) -> Rc<Video> {
     find(path).unwrap_or_else(|| {
+        if super::is_url(path) {
+            let s = path.to_string_lossy();
+            let title = s.split_once("://").map_or(&*s, |(_, rest)| rest).trim_start_matches("www.").to_string();
+            return Rc::new(Video { path: path.to_path_buf(), title, ..Default::default() });
+        }
         let p = parse::parse(path);
         let mut v = Video { path: path.to_path_buf(), title: p.title, year: p.year, ..Default::default() };
         if p.episode {

@@ -176,12 +176,14 @@ pub fn video_menu(anchor: &gtk::Widget, x: f64, y: f64, videos: Vec<Rc<Video>>, 
             Kind::Other => {}
         }
     }
-    let dir = first.path.parent().map(|d| d.to_path_buf());
-    m.add("Open folder", move || {
-        if let Some(d) = &dir {
-            cmd::spawn(&["xdg-open", &d.to_string_lossy()]);
-        }
-    });
+    if !crate::library::is_url(&first.path) {
+        let dir = first.path.parent().map(|d| d.to_path_buf());
+        m.add("Open folder", move || {
+            if let Some(d) = &dir {
+                cmd::spawn(&["xdg-open", &d.to_string_lossy()]);
+            }
+        });
+    }
     if !extra.is_empty() {
         m.separator();
         for (label, f) in extra {
