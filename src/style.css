@@ -1034,8 +1034,27 @@ window.media-window button.back-button:hover {
   color: @theme_text;
 }
 
-.detail-header {
+.detail-hero {
   margin-bottom: 18px;
+}
+
+.detail-hero.has-backdrop {
+  border-radius: 12px;
+  border: 1px solid alpha(@theme_border, 0.55);
+  box-shadow: 0 4px 18px alpha(@theme_shadow, 0.35);
+}
+
+.detail-hero:not(.has-backdrop) > .detail-backdrop,
+.detail-hero:not(.has-backdrop) > .detail-scrim {
+  opacity: 0;
+}
+
+.detail-hero.has-backdrop > .detail-header {
+  padding: 24px;
+}
+
+.detail-scrim {
+  background-image: linear-gradient(to right, alpha(@theme_bg, 0.95) 0%, alpha(@theme_bg, 0.84) 45%, alpha(@theme_bg, 0.5) 100%);
 }
 
 .detail-title {

@@ -186,6 +186,7 @@ fn show_detail(key: &str, season: Option<usize>) {
         meta.push(format!("★ {r:.1}"));
     }
     h.set_text(&show.name, &meta.join(" · "), &show.genres, &show.plot);
+    h.set_backdrop(&show.backdrop);
     if let Some(n) = &next {
         let label = if n.in_progress() { format!("Resume {}", n.code()) } else { format!("Play {}", n.code()) };
         let b = widgets::labeled_button("media-playback-start-symbolic", label.trim());

@@ -217,6 +217,7 @@ fn show_detail(path: &Path) {
     art.set_key(v.card_art());
     let h = views::detail_header(art, "Movie");
     h.set_text(&v.title, &views::video_meta(&v), &v.genres, &v.plot);
+    h.set_backdrop(&v.backdrop);
 
     let resume = v.in_progress();
     let play = widgets::labeled_button(

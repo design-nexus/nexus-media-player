@@ -1,7 +1,7 @@
 //! Shared library views: poster cards and grids, wide cards and rows of them,
 //! episode rows, and the header of a detail view.
 
-use crate::library::art::Art;
+use crate::library::art::{self, Art};
 use crate::library::store::{self, Show};
 use crate::library::{Kind, Video};
 use crate::{fmt, menu, player, widgets};
@@ -409,7 +409,9 @@ pub fn play_buttons(paths: impl Fn() -> Vec<PathBuf> + 'static) -> gtk::Box {
 /// The header of a movie, show, folder or playlist view: picture, kicker,
 /// title, a line of details, a description and actions.
 pub struct Header {
-    pub root: gtk::Box,
+    /// The header over its backdrop (when it has one).
+    pub root: gtk::Overlay,
+    backdrop: gtk::Picture,
     pub title: gtk::Label,
     pub meta: gtk::Label,
     pub genres: gtk::Label,
@@ -418,8 +420,24 @@ pub struct Header {
 }
 
 pub fn detail_header(art: Art, kicker: &str) -> Header {
+    let hero = gtk::Overlay::new();
+    hero.add_css_class("detail-hero");
+    hero.set_overflow(gtk::Overflow::Hidden);
+    let backdrop = gtk::Picture::new();
+    backdrop.set_content_fit(gtk::ContentFit::Cover);
+    backdrop.set_can_shrink(true);
+    backdrop.add_css_class("detail-backdrop");
+    hero.set_child(Some(&backdrop));
+    // Keeps the text readable: solid behind the text, fading towards the right.
+    let scrim = widgets::hbox(0);
+    scrim.add_css_class("detail-scrim");
+    scrim.set_can_target(false);
+    hero.add_overlay(&scrim);
     let root = widgets::hbox(24);
     root.add_css_class("detail-header");
+    hero.add_overlay(&root);
+    // The header sizes the hero; the backdrop fills whatever that is.
+    hero.set_measure_overlay(&root, true);
     root.append(&art.root);
     let text = widgets::vbox(6);
     text.set_valign(gtk::Align::Start);
@@ -451,7 +469,7 @@ pub fn detail_header(art: Art, kicker: &str) -> Header {
     actions.set_margin_top(8);
     text.append(&actions);
     root.append(&text);
-    Header { root, title, meta, genres, plot, actions }
+    Header { root: hero, backdrop, title, meta, genres, plot, actions }
 }
 
 impl Header {
@@ -463,6 +481,19 @@ impl Header {
         self.genres.set_visible(!genres.is_empty());
         self.plot.set_text(plot);
         self.plot.set_visible(!plot.is_empty());
+    }
+
+    /// Show a wide picture behind the header; "" for none.
+    pub fn set_backdrop(&self, key: &str) {
+        let (hero, picture) = (self.root.clone(), self.backdrop.clone());
+        art::load(key, false, move |tex| {
+            picture.set_paintable(tex.as_ref());
+            if tex.is_some() {
+                hero.add_css_class("has-backdrop");
+            } else {
+                hero.remove_css_class("has-backdrop");
+            }
+        });
     }
 }
 

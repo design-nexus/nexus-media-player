@@ -40,6 +40,8 @@ pub struct Show {
     pub rating: Option<f64>,
     pub genres: String,
     pub poster: String,
+    /// A wide picture behind the show's page.
+    pub backdrop: String,
     pub folder: String,
     pub seasons: Vec<Season>,
 }
@@ -249,6 +251,7 @@ fn group_shows(videos: &[Rc<Video>], rows: &[ShowRow]) -> Vec<Rc<Show>> {
                 rating: row.and_then(|r| r.rating),
                 genres: row.map(|r| r.genres.clone()).unwrap_or_default(),
                 poster: row.map(|r| r.poster.clone()).unwrap_or_default(),
+                backdrop: row.map(|r| r.backdrop.clone()).unwrap_or_default(),
                 folder: row.map(|r| r.folder.clone()).unwrap_or_default(),
                 key,
                 seasons,

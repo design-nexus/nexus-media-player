@@ -93,6 +93,8 @@ pub struct Video {
     /// Art cache keys (see `art`); empty when there's none.
     pub poster: String,
     pub still: String,
+    /// A wide picture behind a movie's page.
+    pub backdrop: String,
     pub tmdb_id: Option<i64>,
     /// When the file first joined the library (Unix seconds).
     pub added: i64,

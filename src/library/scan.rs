@@ -226,7 +226,10 @@ fn read(path: &Path, stamp: Stamp, alone: bool, shows: &Mutex<HashMap<PathBuf, S
         v.tmdb_id = n.tmdb_id;
     }
     match v.kind {
-        Kind::Movie => v.poster = art::movie_poster(path, alone).map(|i| art::from_image(&i)).unwrap_or_default(),
+        Kind::Movie => {
+            v.poster = art::movie_poster(path, alone).map(|i| art::from_image(&i)).unwrap_or_default();
+            v.backdrop = art::movie_backdrop(path, alone).map(|i| art::from_image(&i)).unwrap_or_default();
+        }
         Kind::Episode => v.still = art::episode_still(path).map(|i| art::from_image(&i)).unwrap_or_default(),
         Kind::Other => {}
     }

@@ -190,6 +190,7 @@ impl Client {
             genres: genres(&v),
             poster: self.image(v.get("poster_path").and_then(Value::as_str), "w500"),
             still: None,
+            backdrop: self.image(v.get("backdrop_path").and_then(Value::as_str), "w1280"),
         })
     }
 
@@ -207,6 +208,7 @@ impl Client {
             genres: genres(&v),
             poster: self.image(v.get("poster_path").and_then(Value::as_str), "w500"),
             still: None,
+            backdrop: None,
         };
         let backdrop = self.image(v.get("backdrop_path").and_then(Value::as_str), "w1280");
         Ok((t, backdrop))
@@ -320,6 +322,7 @@ fn run_inner(s: &Settings, send: &impl Fn(Progress)) -> Result<(), Error> {
                         genres: None,
                         poster: None,
                         still: c.image(ep.get("still_path").and_then(Value::as_str), "w780"),
+                        backdrop: None,
                     },
                     None => TmdbVideo::default(),
                 }

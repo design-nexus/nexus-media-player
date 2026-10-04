@@ -134,6 +134,18 @@ pub fn movie_poster(video: &Path, alone_in_folder: bool) -> Option<PathBuf> {
     image_named(dir, &names)
 }
 
+/// A movie's wide backdrop: `<name>-fanart.jpg`, or `fanart.jpg` and the like
+/// when the movie has its folder to itself.
+pub fn movie_backdrop(video: &Path, alone_in_folder: bool) -> Option<PathBuf> {
+    let dir = video.parent()?;
+    let stem = video.file_stem()?.to_string_lossy();
+    let mut names = vec![format!("{stem}-fanart"), format!("{stem}-backdrop"), format!("{stem}-landscape")];
+    if alone_in_folder {
+        names.extend(["fanart", "backdrop", "background", "landscape"].map(String::from));
+    }
+    image_named(dir, &names)
+}
+
 /// An episode's own picture: `<name>-thumb.jpg` or `<name>.jpg`.
 pub fn episode_still(video: &Path) -> Option<PathBuf> {
     let dir = video.parent()?;

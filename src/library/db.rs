@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS videos (
     sub_langs TEXT NOT NULL DEFAULT '',
     poster TEXT NOT NULL DEFAULT '',
     still TEXT NOT NULL DEFAULT '',
+    backdrop TEXT NOT NULL DEFAULT '',
     still_tried INTEGER NOT NULL DEFAULT 0,
     tmdb_id INTEGER,
     -- Where the names came from: 'file', 'nfo' or 'tmdb'.
@@ -99,7 +100,25 @@ pub fn open_at(path: &Path) -> Result<Connection> {
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.pragma_update(None, "foreign_keys", true)?;
     conn.execute_batch(SCHEMA)?;
+    migrate(&conn)?;
     Ok(conn)
+}
+
+/// Columns added since the first release, for libraries made before them.
+fn migrate(conn: &Connection) -> Result<()> {
+    let has = |table: &str, column: &str| -> Result<bool> {
+        let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+        let names = stmt.query_map([], |r| r.get::<_, String>(1))?.collect::<rusqlite::Result<Vec<_>>>()?;
+        Ok(names.iter().any(|n| n == column))
+    };
+    if !has("videos", "backdrop")? {
+        // Read movies again on the next scan so their backdrops are found.
+        conn.execute_batch(
+            "ALTER TABLE videos ADD COLUMN backdrop TEXT NOT NULL DEFAULT '';
+             UPDATE videos SET mtime = 0 WHERE kind = 'movie';",
+        )?;
+    }
+    Ok(())
 }
 
 fn text(p: &Path) -> String {
@@ -111,7 +130,7 @@ pub fn load_all(conn: &Connection) -> Result<Vec<Video>> {
         "SELECT v.id, v.path, v.kind, v.title, v.year, v.show, v.season, v.episode, v.plot, v.rating, v.genres,
                 v.duration, v.width, v.height, v.vcodec, v.acodec, v.audio_langs, v.sub_langs, v.poster, v.still,
                 v.tmdb_id, v.added, v.mtime, v.size,
-                w.position, w.watched, w.last_played, w.plays, w.aid, w.sid, w.sub_delay
+                w.position, w.watched, w.last_played, w.plays, w.aid, w.sid, w.sub_delay, v.backdrop
          FROM videos v LEFT JOIN watch w ON w.path = v.path",
     )?;
     let rows = stmt.query_map([], |r| {
@@ -145,6 +164,7 @@ pub fn load_all(conn: &Connection) -> Result<Vec<Video>> {
             sub_langs: r.get(17)?,
             poster: r.get(18)?,
             still: r.get(19)?,
+            backdrop: r.get(31)?,
             tmdb_id: r.get(20)?,
             added: r.get(21)?,
             mtime: r.get(22)?,
@@ -168,15 +188,16 @@ pub fn upsert(tx: &Transaction, v: &Video, source: &str) -> Result<()> {
     tx.execute(
         "INSERT INTO videos (path, kind, title, year, show, season, episode, plot, rating, genres, duration, width, height,
                              vcodec, acodec, audio_langs, sub_langs, poster, still, still_tried, tmdb_id, source,
-                             tmdb_done, added, mtime, size)
+                             tmdb_done, added, mtime, size, backdrop)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, 0, ?20, ?21, 0,
-                 ?22, ?23, ?24)
+                 ?22, ?23, ?24, ?25)
          ON CONFLICT(path) DO UPDATE SET
             kind = excluded.kind, title = excluded.title, year = excluded.year, show = excluded.show,
             season = excluded.season, episode = excluded.episode, plot = excluded.plot, rating = excluded.rating,
             genres = excluded.genres, duration = excluded.duration, width = excluded.width, height = excluded.height,
             vcodec = excluded.vcodec, acodec = excluded.acodec, audio_langs = excluded.audio_langs,
             sub_langs = excluded.sub_langs, poster = excluded.poster, still = excluded.still, still_tried = 0,
+            backdrop = excluded.backdrop,
             tmdb_id = excluded.tmdb_id, source = excluded.source, tmdb_done = 0,
             mtime = excluded.mtime, size = excluded.size",
         params![
@@ -203,7 +224,8 @@ pub fn upsert(tx: &Transaction, v: &Video, source: &str) -> Result<()> {
             source,
             v.added,
             v.mtime,
-            v.size
+            v.size,
+            v.backdrop
         ],
     )?;
     Ok(())
@@ -399,6 +421,7 @@ pub struct TmdbVideo {
     pub genres: Option<String>,
     pub poster: Option<String>,
     pub still: Option<String>,
+    pub backdrop: Option<String>,
 }
 
 pub fn apply_tmdb_video(conn: &Connection, path: &Path, t: &TmdbVideo) -> Result<()> {
@@ -409,9 +432,10 @@ pub fn apply_tmdb_video(conn: &Connection, path: &Path, t: &TmdbVideo) -> Result
             plot = COALESCE(?5, plot), rating = COALESCE(?6, rating), genres = COALESCE(?7, genres),
             poster = CASE WHEN poster = '' OR source = 'tmdb' THEN COALESCE(?8, poster) ELSE poster END,
             still = COALESCE(?9, still),
+            backdrop = CASE WHEN backdrop = '' OR source = 'tmdb' THEN COALESCE(?11, backdrop) ELSE backdrop END,
             source = CASE WHEN ?10 THEN 'tmdb' ELSE source END, tmdb_done = 1
          WHERE path = ?1",
-        params![text(path), t.tmdb_id, t.title, t.year, t.plot, t.rating, t.genres, t.poster, t.still, found],
+        params![text(path), t.tmdb_id, t.title, t.year, t.plot, t.rating, t.genres, t.poster, t.still, found, t.backdrop],
     )?;
     Ok(())
 }
