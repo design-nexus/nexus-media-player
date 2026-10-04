@@ -453,7 +453,9 @@ pub fn detail_header(art: Art, kicker: &str) -> Header {
     backdrop.set_content_fit(gtk::ContentFit::Cover);
     backdrop.set_can_shrink(true);
     backdrop.add_css_class("detail-backdrop");
-    hero.set_child(Some(&backdrop));
+    // An unmeasured overlay, so a big picture can't make the header taller.
+    hero.set_child(Some(&widgets::vbox(0)));
+    hero.add_overlay(&backdrop);
     // Keeps the text readable: solid behind the text, fading towards the right.
     let scrim = widgets::hbox(0);
     scrim.add_css_class("detail-scrim");

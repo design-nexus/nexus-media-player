@@ -1122,6 +1122,30 @@ window.media-window .player-info:hover button.bar-close {
   margin: 0 24px;
 }
 
+.home-hero {
+  min-height: 220px;
+  border-radius: 12px;
+  border: 1px solid alpha(@theme_border, 0.55);
+  box-shadow: 0 4px 18px alpha(@theme_shadow, 0.35);
+  background: mix(@theme_bg, @theme_muted, 0.4);
+}
+
+.home-hero-text {
+  padding: 28px;
+}
+
+progressbar.hero-progress > trough {
+  min-height: 4px;
+  border-radius: 999px;
+  background: alpha(@theme_muted, 0.9);
+}
+
+progressbar.hero-progress > trough > progress {
+  min-height: 4px;
+  border-radius: 999px;
+  background: @theme_accent;
+}
+
 .drop-hint {
   padding: 18px 28px;
   border-radius: 12px;
@@ -1142,7 +1166,7 @@ window.media-window .player-info:hover button.bar-close {
   box-shadow: 0 4px 18px alpha(@theme_shadow, 0.35);
 }
 
-.detail-hero:not(.has-backdrop) > .detail-backdrop,
+.detail-hero:not(.has-backdrop) > picture.detail-backdrop,
 .detail-hero:not(.has-backdrop) > .detail-scrim {
   opacity: 0;
 }
