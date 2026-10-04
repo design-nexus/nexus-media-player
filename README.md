@@ -12,8 +12,9 @@ from your Omarchy theme and fits a half-screen tile.
   - **Home:** Continue watching, the next episode of each show you're following, and
     what was added lately.
   - **Movies:** a poster grid, sorted by title, year, date added or rating, with
-    watched and unwatched filters. Each movie has a page with its details and file info.
-  - **TV shows:** shows, seasons and episodes, found from file names
+    watched and unwatched filters (both remembered). Each movie has a page with its details and file info.
+  - **TV shows:** shows, seasons (with Play season) and episodes (with Mark watched up
+    to here), found from file names
     (`Show S01E02.mkv`, `Show 1x02.mkv`) or folders (`Show/Season 1/02 - Title.mkv`).
   - **All videos** in one sortable table, and **Folders** as they're laid out on disk.
   - **Search** (<kbd>Ctrl</kbd>+<kbd>F</kbd>) across titles, shows, episodes and plots.
@@ -93,6 +94,7 @@ media-player [OPTIONS] [FILES…]
 | <kbd>Ctrl</kbd>+<kbd>←</kbd> / <kbd>→</kbd> | Previous / next video |
 | <kbd>↑</kbd> / <kbd>↓</kbd> | Louder / quieter |
 | <kbd>F</kbd>, <kbd>Esc</kbd> | Fullscreen, leave fullscreen |
+| <kbd>Alt</kbd>+<kbd>←</kbd> | Back (also the mouse's back button); <kbd>Esc</kbd> closes a movie or show |
 | <kbd>M</kbd> | Mute |
 | <kbd>S</kbd> / <kbd>A</kbd> | Next subtitles / next sound track |
 | <kbd>Z</kbd> / <kbd>X</kbd> | Subtitles earlier / later |

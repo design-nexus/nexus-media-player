@@ -20,6 +20,8 @@ struct Ui {
 
 thread_local! {
     static UI: RefCell<Option<Ui>> = const { RefCell::new(None) };
+    /// The open page came from this section's own grid (so Back returns there).
+    static FROM_GRID: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static SORT: RefCell<String> = RefCell::new(prefs::get().shows_sort);
     static FILTER: RefCell<String> = RefCell::new(prefs::get().shows_filter);
 }
@@ -135,8 +137,19 @@ fn reopen() {
 
 /// Open a show's page.
 pub fn open(key: &str) {
+    FROM_GRID.with(|f| f.set(window::current() == "tv"));
     window::navigate("tv");
     show_detail(key, None);
+}
+
+/// Back from an open page: true when that's all Back should do here. A page
+/// opened from elsewhere closes too, but Back goes on to where it came from.
+pub fn back_out() -> bool {
+    let open = UI.with(|u| u.borrow().as_ref().is_some_and(|u| u.open.is_some()));
+    if open {
+        back();
+    }
+    open && FROM_GRID.with(|f| f.get())
 }
 
 fn back() {

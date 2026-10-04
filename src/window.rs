@@ -33,6 +33,26 @@ thread_local! {
     static NARROW: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     /// A playlist asked for before the playlists finished loading.
     static PENDING: RefCell<Option<String>> = const { RefCell::new(None) };
+    /// Sections visited, for Back.
+    static HISTORY: RefCell<Vec<String>> = const { RefCell::new(Vec::new()) };
+    static GOING_BACK: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Back: out of an open movie or show, else to the section before.
+pub fn go_back() {
+    let cur = current();
+    let handled = match cur.as_str() {
+        "movies" => sections::movies::back_out(),
+        "tv" => sections::shows::back_out(),
+        _ => false,
+    };
+    if handled {
+        return;
+    }
+    let Some(prev) = HISTORY.with(|h| h.borrow_mut().pop()) else { return };
+    GOING_BACK.with(|g| g.set(true));
+    navigate(&prev);
+    GOING_BACK.with(|g| g.set(false));
 }
 
 fn ui() -> Option<Rc<RefCell<Ui>>> {
@@ -356,7 +376,7 @@ pub const SHORTCUTS: &[(&str, Keys)] = &[
             (&["["], "Slower"),
             (&["]"], "Faster"),
             (&["F"], "Fullscreen"),
-            (&["Esc"], "Leave fullscreen, or clear the search"),
+            (&["Esc"], "Leave fullscreen, clear the search, or close a movie or show"),
         ],
     ),
     (
@@ -381,6 +401,7 @@ pub const SHORTCUTS: &[(&str, Keys)] = &[
             (&["Ctrl", "L"], "Open a web address"),
             (&["Ctrl", "S"], "Save the frame as a picture"),
             (&["Ctrl", "F"], "Search the library"),
+            (&["Alt", "←"], "Back (or the mouse's back button)"),
             (&["Ctrl", "B"], "Collapse or expand the sidebar"),
             (&["?"], "These shortcuts"),
             (&["Ctrl", "Q"], "Close"),
@@ -476,6 +497,10 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
                 _ => glib::Propagation::Proceed,
             };
         }
+        if alt && key == gdk::Key::Left {
+            go_back();
+            return stop;
+        }
         if typing || alt {
             return glib::Propagation::Proceed;
         }
@@ -484,6 +509,13 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
             gdk::Key::space => player::toggle(),
             gdk::Key::Escape if w2.is_fullscreen() => set_fullscreen(false),
             gdk::Key::Escape if !s2.text().is_empty() => s2.set_text(""),
+            // Esc closes an open movie or show, and goes no further.
+            gdk::Key::Escape if current() == "movies" => {
+                sections::movies::back_out();
+            }
+            gdk::Key::Escape if current() == "tv" => {
+                sections::shows::back_out();
+            }
             gdk::Key::f | gdk::Key::F => toggle_fullscreen(),
             gdk::Key::m | gdk::Key::M => {
                 player::set_muted(!p.muted);
@@ -520,6 +552,16 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
         stop
     });
     window.add_controller(keys);
+
+    // The mouse's back button.
+    let mouse = gtk::GestureClick::new();
+    mouse.set_button(8);
+    mouse.set_propagation_phase(gtk::PropagationPhase::Capture);
+    mouse.connect_pressed(|g, _, _, _| {
+        g.set_state(gtk::EventSequenceState::Claimed);
+        go_back();
+    });
+    window.add_controller(mouse);
 
     // Bubble phase: elsewhere the arrows seek and set the volume only when
     // nothing focused used them (lists and grids move their selection).
@@ -808,6 +850,17 @@ pub fn navigate(id: &str) {
         return;
     }
     let mut u = ui.borrow_mut();
+    if u.current != id && !u.current.is_empty() && u.current != "search" && !GOING_BACK.with(|g| g.get()) {
+        let from = u.current.clone();
+        HISTORY.with(|h| {
+            let mut h = h.borrow_mut();
+            h.push(from);
+            let n = h.len();
+            if n > 50 {
+                h.drain(..n - 50);
+            }
+        });
+    }
     if let Some(prev) = u.nav_items.get(&u.current) {
         prev.remove_css_class("active");
     }
