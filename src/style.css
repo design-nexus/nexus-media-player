@@ -889,6 +889,18 @@ window.media-window scale.volume > trough > slider:active {
   opacity: 1;
 }
 
+window.media-window scale.seek > marks {
+  margin-top: 2px;
+}
+
+window.media-window scale.seek > marks > mark > indicator {
+  min-width: 2px;
+  min-height: 4px;
+  border-radius: 1px;
+  background: alpha(@theme_dim_text, 0.7);
+  color: transparent;
+}
+
 /* ---------- Pictures and cards ---------- */
 
 .art {

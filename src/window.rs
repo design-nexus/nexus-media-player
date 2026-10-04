@@ -430,6 +430,8 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
                     flash(&format!("{}0% · {}", n, crate::fmt::time(d * n as f64 / 10.0)));
                 }
             }
+            gdk::Key::Page_Up => player::step_chapter(false),
+            gdk::Key::Page_Down => player::step_chapter(true),
             gdk::Key::Home if on_player => player::seek(0.0),
             gdk::Key::End if on_player => player::seek(player::duration() - 1.0),
             // On the player page the arrows always drive playback.

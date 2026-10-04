@@ -136,6 +136,19 @@ fn delay_row(
     row
 }
 
+fn chapter_menu(content: &gtk::Box, pop: &gtk::Popover) {
+    content.append(&widgets::label("CHAPTERS", "popover-heading"));
+    let now = player::current_chapter();
+    for (i, (t, name)) in player::chapters().into_iter().enumerate() {
+        let pop = pop.clone();
+        let label = if name.is_empty() { format!("Chapter {}", i + 1) } else { name };
+        content.append(&choice(&label, &fmt::time(t), now == Some(i), move || {
+            player::seek(t);
+            pop.popdown();
+        }));
+    }
+}
+
 fn speed_menu(content: &gtk::Box, pop: &gtk::Popover) {
     content.append(&widgets::label("SPEED", "popover-heading"));
     let now = player::speed();
@@ -459,6 +472,8 @@ pub fn build(page: &Page) {
     let speed_label = widgets::label("", "osd-speed");
     speed_label.add_css_class("mono");
     row.append(&speed_label);
+    let chapters = menu_button("view-list-ordered-symbolic", "Chapters (Page Up and Page Down)", chapter_menu);
+    chapters.set_visible(false);
     let speed = menu_button("nmp-speed-symbolic", "Speed ([ and ])", speed_menu);
     let audio = menu_button("nmp-audio-track-symbolic", "Sound: track, sync and night mode (A)", audio_menu);
     let subs = menu_button("nmp-subtitles-symbolic", "Subtitles (S)", subtitle_menu);
@@ -468,6 +483,7 @@ pub fn build(page: &Page) {
     let close = widgets::icon_button("window-close-symbolic", "Close video");
     close.add_css_class("osd-button");
     close.set_focus_on_click(false);
+    row.append(&chapters);
     row.append(&speed);
     row.append(&audio);
     row.append(&subs);
@@ -511,7 +527,7 @@ pub fn build(page: &Page) {
     // Controls fade out while playing and the pointer rests.
     let idle_gen: Rc<Cell<u32>> = Rc::default();
     let over_controls = Rc::new(Cell::new(false));
-    let menus = [speed.clone(), audio.clone(), subs.clone()];
+    let menus = [chapters.clone(), speed.clone(), audio.clone(), subs.clone()];
     let wake: Rc<dyn Fn()> = {
         let (overlay, top, controls, idle_gen, over_controls) =
             (overlay.clone(), top.clone(), controls.clone(), idle_gen.clone(), over_controls.clone());
@@ -643,7 +659,7 @@ pub fn build(page: &Page) {
             next.clone(),
             wake.clone(),
         );
-        let (subs, audio, close) = (subs.clone(), audio.clone(), close.clone());
+        let (subs, audio, close, chapters) = (subs.clone(), audio.clone(), close.clone(), chapters.clone());
         let (sub_base, show_sub) = (sub_base.clone(), show_sub.clone());
         move |e: Event| match e {
             Event::Track | Event::Video => {
@@ -713,6 +729,7 @@ pub fn build(page: &Page) {
                     subs.add_css_class("dim");
                 }
                 audio.set_sensitive(player::current().is_some());
+                chapters.set_visible(!player::chapters().is_empty());
             }
             Event::Position | Event::Seeked => show_sub(),
         }

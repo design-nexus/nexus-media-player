@@ -1185,6 +1185,34 @@ pub fn apply_eq() {
     });
 }
 
+/// The chapter playing now (an index into `chapters`).
+pub fn current_chapter() -> Option<usize> {
+    let pos = position();
+    chapters().iter().rposition(|(t, _)| *t <= pos + 0.5)
+}
+
+/// Jump to the next or previous chapter. Back goes to the start of this
+/// chapter first, unless it only just started.
+pub fn step_chapter(forward: bool) {
+    let list = chapters();
+    if list.is_empty() {
+        window::flash("No chapters");
+        return;
+    }
+    let cur = current_chapter();
+    let target = match (forward, cur) {
+        (true, Some(i)) => i + 1,
+        (true, None) => 0,
+        (false, Some(i)) if position() - list[i].0 > 3.0 => i,
+        (false, Some(i)) => i.saturating_sub(1),
+        (false, None) => 0,
+    };
+    let Some((t, name)) = list.get(target).cloned() else { return };
+    seek(t);
+    let label = if name.is_empty() { format!("Chapter {}", target + 1) } else { name };
+    window::flash(&label);
+}
+
 /// Save the frame on screen as a PNG in the pictures folder.
 pub fn screenshot() {
     let Some(v) = current() else { return };

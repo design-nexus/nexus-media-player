@@ -150,6 +150,20 @@ impl SeekBar {
             }
         };
         refresh(Event::Track);
+        // Chapter ticks under the bar; dragging snaps to them.
+        let marks = {
+            let seek = seek.clone();
+            move |e: Event| {
+                if matches!(e, Event::Tracks | Event::Track) {
+                    seek.clear_marks();
+                    for (t, _) in player::chapters().iter().filter(|(t, _)| *t > 0.5) {
+                        seek.add_mark(*t, gtk::PositionType::Bottom, None);
+                    }
+                }
+            }
+        };
+        marks(Event::Tracks);
+        player::subscribe(&root, marks);
         let click = gtk::GestureClick::new();
         click.connect_released(|_, _, _, _| player::set_time_left(!prefs::get().time_left));
         dur.add_controller(click);
