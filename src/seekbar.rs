@@ -3,7 +3,7 @@
 //! player bar.
 
 use crate::player::{self, Event, scrub};
-use crate::{fmt, widgets};
+use crate::{fmt, prefs, widgets};
 use gtk::glib;
 use gtk::prelude::*;
 use std::cell::Cell;
@@ -34,8 +34,11 @@ impl SeekBar {
         seek.set_focus_on_click(false);
         let dur = widgets::label("0:00", "time-readout");
         dur.add_css_class("mono");
-        dur.set_width_chars(7);
+        dur.add_css_class("clickable");
+        dur.set_width_chars(8);
         dur.set_xalign(0.0);
+        dur.set_tooltip_text(Some("Show the time left or the length"));
+        dur.set_cursor_from_name(Some("pointer"));
         root.append(&pos);
         root.append(&seek);
         root.append(&dur);
@@ -125,7 +128,7 @@ impl SeekBar {
         let refresh = {
             let (seek, pos, dur) = (seek.clone(), pos.clone(), dur.clone());
             move |e: Event| {
-                if !matches!(e, Event::Track | Event::Position | Event::Seeked) {
+                if !matches!(e, Event::Track | Event::Position | Event::Seeked | Event::Options) {
                     return;
                 }
                 if dragging.get() != 0 && e == Event::Position {
@@ -135,14 +138,21 @@ impl SeekBar {
                 if (seek.adjustment().upper() - d.max(1.0)).abs() > 0.5 {
                     seek.set_range(0.0, d.max(1.0));
                 }
-                dur.set_text(&fmt::time(d));
                 let p = player::position();
+                dur.set_text(&if prefs::get().time_left && d > 0.0 {
+                    format!("−{}", fmt::time(d - p))
+                } else {
+                    fmt::time(d)
+                });
                 seek.set_value(p);
                 pos.set_text(&fmt::time(p));
                 seek.set_sensitive(player::current().is_some());
             }
         };
         refresh(Event::Track);
+        let click = gtk::GestureClick::new();
+        click.connect_released(|_, _, _, _| player::set_time_left(!prefs::get().time_left));
+        dur.add_controller(click);
         player::subscribe(&root, refresh);
         SeekBar { root }
     }

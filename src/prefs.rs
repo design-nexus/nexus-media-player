@@ -59,6 +59,8 @@ pub struct Prefs {
     pub sub_scale: f64,
     /// Thumbnails on the seek bar.
     pub scrub: bool,
+    /// The seek bar shows the time left instead of the length.
+    pub time_left: bool,
     pub notify: bool,
     pub tmdb: bool,
     pub tmdb_key: String,
@@ -106,6 +108,7 @@ impl Default for Prefs {
             subtitles: true,
             sub_scale: 1.0,
             scrub: true,
+            time_left: false,
             notify: false,
             tmdb: false,
             tmdb_key: String::new(),

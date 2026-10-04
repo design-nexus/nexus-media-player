@@ -606,13 +606,34 @@ pub fn build(page: &Page) {
     overlay.add_controller(scroll);
 
     // ----- Following the player -----
+    // The second line of the top: what's playing, then when it ends.
+    let sub_base: Rc<RefCell<String>> = Rc::default();
+    let show_sub: Rc<dyn Fn()> = {
+        let (subtitle, sub_base) = (subtitle.clone(), sub_base.clone());
+        Rc::new(move || {
+            let base = sub_base.borrow();
+            let d = player::duration();
+            let ends = if d > 0.0 && player::current().is_some() {
+                fmt::clock_in((d - player::position()) / player::speed().max(0.01))
+            } else {
+                String::new()
+            };
+            let text = match (base.is_empty(), ends.is_empty()) {
+                (_, true) => base.clone(),
+                (true, false) => format!("Ends at {ends}"),
+                (false, false) => format!("{base} · Ends at {ends}"),
+            };
+            if subtitle.text() != text {
+                subtitle.set_text(&text);
+            }
+        })
+    };
     let refresh = {
         let top = top.clone();
-        let (stage, art, title, subtitle, play, spinner, mute, volume, speed_label, prev, next, wake) = (
+        let (stage, art, title, play, spinner, mute, volume, speed_label, prev, next, wake) = (
             stage.clone(),
             art.clone(),
             title.clone(),
-            subtitle.clone(),
             play.clone(),
             spinner.clone(),
             mute.clone(),
@@ -623,6 +644,7 @@ pub fn build(page: &Page) {
             wake.clone(),
         );
         let (subs, audio, close) = (subs.clone(), audio.clone(), close.clone());
+        let (sub_base, show_sub) = (sub_base.clone(), show_sub.clone());
         move |e: Event| match e {
             Event::Track | Event::Video => {
                 let cur = player::current();
@@ -640,19 +662,20 @@ pub fn build(page: &Page) {
                         match v.kind {
                             Kind::Episode => {
                                 title.set_text(&v.show);
-                                subtitle.set_text(&format!("{} · {}", v.code(), v.episode_name()));
+                                *sub_base.borrow_mut() = format!("{} · {}", v.code(), v.episode_name());
                             }
                             _ => {
                                 title.set_text(&v.title);
-                                subtitle.set_text(&v.year.map(|y| y.to_string()).unwrap_or_default());
+                                *sub_base.borrow_mut() = v.year.map(|y| y.to_string()).unwrap_or_default();
                             }
                         }
                     }
                     None => {
                         title.set_text("");
-                        subtitle.set_text("");
+                        sub_base.borrow_mut().clear();
                     }
                 }
+                show_sub();
                 top.set_visible(cur.is_some());
                 close.set_sensitive(cur.is_some());
                 prev.set_sensitive(player::can_previous());
@@ -679,6 +702,7 @@ pub fn build(page: &Page) {
                 if (volume.value() - p.volume).abs() > 0.005 {
                     volume.set_value(p.volume);
                 }
+                show_sub();
                 let s = player::speed();
                 speed_label.set_text(&if (s - 1.0).abs() > 0.001 { format!("{}×", fmt::speed(s)) } else { String::new() });
             }
@@ -690,7 +714,7 @@ pub fn build(page: &Page) {
                 }
                 audio.set_sensitive(player::current().is_some());
             }
-            Event::Position | Event::Seeked => {}
+            Event::Position | Event::Seeked => show_sub(),
         }
     };
     for e in [Event::Track, Event::State, Event::Options, Event::Tracks, Event::Buffering] {

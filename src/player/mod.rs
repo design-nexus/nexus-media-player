@@ -1184,6 +1184,12 @@ pub fn apply_eq() {
     });
 }
 
+/// The seek bars show the time left (or the length).
+pub fn set_time_left(on: bool) {
+    prefs::update(|p| p.time_left = on);
+    emit(Event::Options);
+}
+
 pub fn set_night_mode(on: bool) {
     prefs::update(|p| p.night_mode = on);
     apply_eq();

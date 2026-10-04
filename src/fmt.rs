@@ -23,6 +23,15 @@ pub fn left(secs: f64) -> String {
     if secs < 60.0 { "Almost done".into() } else { format!("{} left", total(secs)) }
 }
 
+/// The clock time `secs` from now: "10:42 PM", or "22:42" where the
+/// locale has no AM/PM.
+pub fn clock_in(secs: f64) -> String {
+    let Ok(now) = gtk::glib::DateTime::now_local() else { return String::new() };
+    let Ok(then) = now.add_seconds(secs.max(0.0)) else { return String::new() };
+    let twelve = then.format("%p").is_ok_and(|p| !p.is_empty());
+    then.format(if twelve { "%-l:%M %p" } else { "%H:%M" }).map(|s| s.to_string()).unwrap_or_default()
+}
+
 /// Playback speed: 1, 1.25, 0.5.
 pub fn speed(s: f64) -> String {
     let t = format!("{s:.2}");
