@@ -1,7 +1,7 @@
 # Nexus Media Player
 
 A video player for [Omarchy](https://omarchy.org). It keeps your movies and TV shows in
-a library, remembers where you stopped, and plays them with mpv. It takes its colours
+a library, remembers where you stopped, and plays them with mpv. It takes its colors
 from your Omarchy theme and fits a half-screen tile.
 
 ## What it does
@@ -53,7 +53,7 @@ from your Omarchy theme and fits a half-screen tile.
   (hold <kbd>Shift</kbd> to add them to the queue).
 - **Queue and playlists:** play next or add to the queue from any video's right-click
   menu, make playlists, drag videos onto them in the sidebar, and import or export M3U.
-- **Equalizer:** ten bands and a preamp, with presets and your own saved ones.
+- **Equalizer:** ten bands and a preamp, with presets and your own saved ones. It opens from the top bar.
 - **Media keys and the bar:** MPRIS, so media keys, `playerctl` and status bars control
   it and show what's playing.
 
@@ -106,7 +106,7 @@ media-player [OPTIONS] [FILES…]
 | <kbd>Ctrl</kbd>+<kbd>O</kbd> | Open files |
 | <kbd>Ctrl</kbd>+<kbd>L</kbd> | Open a web address |
 | <kbd>Ctrl</kbd>+<kbd>S</kbd> | Save the frame as a picture |
-| <kbd>?</kbd> | All keyboard shortcuts |
+| <kbd>F1</kbd> or <kbd>?</kbd> | All keyboard shortcuts |
 | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Search the library |
 | <kbd>Ctrl</kbd>+<kbd>Q</kbd> | Close |
 

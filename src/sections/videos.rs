@@ -15,7 +15,7 @@ thread_local! {
 
 pub fn build(page: &Page) {
     page.body.append(&scan_banner());
-    let content = widgets::vbox(12);
+    let content = widgets::vbox(0);
     let toolbar = widgets::hbox(10);
     toolbar.add_css_class("toolbar");
     let count = widgets::label("", "dim");

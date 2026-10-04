@@ -465,7 +465,7 @@ pub fn build(page: &Page) {
         let dd = theme_dd.clone();
         let (r, _) = widgets::switch_row(
             "Follow Omarchy theme",
-            "Match the desktop's colours and update live whenever the Omarchy theme changes.",
+            "Match the desktop's colors and update live whenever the Omarchy theme changes.",
             p.mode == prefs::ThemeMode::Omarchy,
             move |on| {
                 prefs::update(|p| p.mode = if on { prefs::ThemeMode::Omarchy } else { prefs::ThemeMode::Theme });
@@ -510,7 +510,7 @@ pub fn build(page: &Page) {
         }
         glib::ControlFlow::Continue
     });
-    g.add(&widgets::row("Current colours", "", Some(swatches.upcast_ref())));
+    g.add(&widgets::row("Current colors", "", Some(swatches.upcast_ref())));
 
     let (r, _) = widgets::switch_row("Glow", "Soft accent glow around focused and selected elements.", p.glow, |on| {
         prefs::update(|p| p.glow = on);
@@ -531,5 +531,5 @@ pub fn build(page: &Page) {
             g.add(&widgets::row(what, "", Some(widgets::key_caps(caps).upcast_ref())));
         }
     }
-    g.note("Press <b>?</b> anywhere to see these. Media keys work through MPRIS. From a terminal or a binding: <tt>media-player --play-pause</tt>, <tt>--next</tt>, <tt>--previous</tt>.");
+    g.note("Press <b>F1</b> anywhere to see these. Media keys work through MPRIS. From a terminal or a binding: <tt>media-player --play-pause</tt>, <tt>--next</tt>, <tt>--previous</tt>.");
 }

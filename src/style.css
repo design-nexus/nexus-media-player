@@ -1,9 +1,20 @@
-/* Music — Nexus app style (see ~/Projects/STYLE.md). Every colour comes from the
- * @theme_* tokens defined by the active palette (see theme.rs). */
+/* Media Player — Nexus app style. One flat surface split by hairlines, monospace
+ * throughout. Every colour comes from the @theme_* tokens defined by the active
+ * palette (see theme.rs), or from the mixes of them below. */
+
+@define-color hairline mix(@theme_bg, @theme_border, 0.82);
+@define-color divider alpha(@theme_text, 0.08);
+@define-color nav_active mix(@theme_bg, @theme_accent, 0.18);
+@define-color row_hover mix(@theme_bg, @theme_accent, 0.07);
+@define-color lift mix(@theme_bg, @theme_muted, 0.09);
+@define-color lift_active mix(@lift, @theme_accent, 0.1);
+@define-color veil alpha(mix(@theme_bg, @theme_shadow, 0.45), 0.82);
 
 window.media-window {
   background: @theme_bg;
   color: @theme_text;
+  font-family: "JetBrains Mono", "JetBrainsMono Nerd Font", monospace;
+  font-weight: 500;
 }
 
 window.media-window,
@@ -18,18 +29,19 @@ window.media-window dialog {
   font-feature-settings: "tnum";
 }
 
+
 /* ---------- Sidebar ---------- */
 
 .settings-navigation {
-  background: @theme_surface;
-  min-width: 240px;
-  padding: 20px 15px 14px;
-  border-right: 1px solid alpha(@theme_border, 0.55);
+  background: @theme_bg;
+  min-width: 250px;
+  padding: 10px 6px;
+  border-right: 1px solid @hairline;
 }
 
 .settings-navigation.compact {
   min-width: 0;
-  padding: 16px 6px;
+  padding: 10px 6px;
 }
 
 .settings-navigation.compact button.nav-item {
@@ -37,62 +49,27 @@ window.media-window dialog {
   padding: 0;
 }
 
-.settings-navigation .nav-head {
-  margin-bottom: 14px;
-}
-
-.settings-navigation.compact .nav-head {
-  margin-bottom: 10px;
-}
-
-window.media-window .settings-navigation button.nav-collapse {
-  min-width: 30px;
-  min-height: 30px;
-  padding: 0;
-  border-radius: 7px;
-  background: transparent;
-  border-color: transparent;
-  box-shadow: none;
-}
-
-window.media-window .settings-navigation button.nav-collapse image {
-  color: @theme_dim_text;
-}
-
-window.media-window .settings-navigation button.nav-collapse:hover {
-  background: alpha(@theme_highlight, 0.7);
-}
-
-window.media-window .settings-navigation button.nav-collapse:hover image {
-  color: @theme_text;
-}
-
-.settings-navigation .menu-heading {
-  margin: 0 10px;
-  font-size: 0.875em;
-  font-weight: 800;
-  letter-spacing: 2px;
-  color: @theme_dim_text;
-}
-
 .settings-navigation .nav-group {
-  margin: 16px 10px 6px;
-  font-size: 0.72em;
-  font-weight: 700;
-  letter-spacing: 1.6px;
-  color: alpha(@theme_dim_text, 0.85);
+  margin: 10px -6px 4px;
+  padding: 16px 18px 4px;
+  border-top: 1px solid @hairline;
+  font-size: 0.76em;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: @theme_dim_text;
 }
 
 .settings-navigation button.nav-item {
-  min-height: 38px;
+  min-height: 42px;
   padding: 0 12px;
   margin: 1px 0;
   border-radius: 6px;
   border: none;
   background: transparent;
   box-shadow: none;
-  color: alpha(@theme_text, 0.78);
-  transition: background 150ms ease-out, color 150ms ease-out, box-shadow 150ms ease-out;
+  color: @theme_text;
+  font-weight: 500;
+  transition: background 150ms ease-out, color 150ms ease-out;
 }
 
 .settings-navigation button.nav-item image {
@@ -100,14 +77,12 @@ window.media-window .settings-navigation button.nav-collapse:hover image {
 }
 
 .settings-navigation button.nav-item:hover {
-  background: alpha(@theme_highlight, 0.55);
-  color: @theme_text;
+  background: @row_hover;
 }
 
 .settings-navigation button.nav-item.active {
-  background: alpha(@theme_accent, 0.16);
-  color: @theme_text;
-  box-shadow: inset 0 0 0 1px alpha(@theme_accent, 0.42);
+  background: @nav_active;
+  box-shadow: none;
 }
 
 .settings-navigation button.nav-item.active image {
@@ -115,46 +90,42 @@ window.media-window .settings-navigation button.nav-collapse:hover image {
 }
 
 .settings-navigation button.nav-item .nav-label {
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .settings-navigation button.nav-settings {
   margin-bottom: 4px;
 }
 
-.settings-navigation .nav-footer {
-  margin-top: 8px;
-  padding-top: 10px;
-  border-top: 1px solid alpha(@theme_border, 0.45);
-}
 
 /* ---------- Search ---------- */
 
 entry.settings-search,
 searchbar entry,
 entry.settings-search > text {
-  min-height: 34px;
+  min-height: 36px;
 }
 
 entry.settings-search {
-  margin: 0 0 6px;
-  padding: 0 10px;
-  border-radius: 7px;
-  background: alpha(@theme_bg, 0.7);
-  border: 1px solid alpha(@theme_border, 0.7);
+  margin: 0 0 14px;
+  padding: 0 12px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid @hairline;
   box-shadow: none;
   color: @theme_text;
   outline: none;
 }
 
 entry.settings-search:focus-within {
-  border-color: alpha(@theme_accent, 0.8);
-  box-shadow: 0 0 0 1px alpha(@theme_accent, 0.38);
+  border-color: @theme_accent;
+  box-shadow: none;
 }
 
 entry.settings-search image {
   color: @theme_dim_text;
 }
+
 
 /* ---------- Content ---------- */
 
@@ -163,38 +134,39 @@ entry.settings-search image {
 }
 
 .settings-page {
-  padding: 30px 36px 48px;
+  padding: 12px 24px 36px;
+}
+
+/* A page's first heading sits right under the top padding, so the space
+ * above it matches the space below it. */
+.settings-page > .settings-group:first-child > .group-title,
+.settings-page > .settings-group:first-child > .group-head,
+.settings-page > .settings-group:first-child > box:first-child > .group-title,
+.group-title.page-first,
+.group-head.page-first {
+  margin-top: 0;
 }
 
 .settings-page.narrow {
-  padding: 22px 18px 40px;
-}
-
-.section-header {
-  margin-bottom: 8px;
+  padding: 12px 16px 32px;
 }
 
 .section-title {
-  font-size: 1.62em;
-  font-weight: 800;
+  font-size: 1.3em;
+  font-weight: 700;
   color: @theme_text;
 }
 
-.section-description {
-  margin-top: 2px;
-  color: @theme_dim_text;
-}
-
 .group-title {
-  margin: 24px 2px 8px;
-  font-size: 0.76em;
-  font-weight: 800;
-  letter-spacing: 1.6px;
+  margin: 26px 2px 12px;
+  font-size: 0.9em;
+  font-weight: 600;
+  letter-spacing: 2px;
   color: @theme_dim_text;
 }
 
 .group-note {
-  margin: -2px 2px 10px;
+  margin: -6px 2px 12px;
   font-size: 0.88em;
   color: @theme_dim_text;
 }
@@ -204,25 +176,14 @@ entry.settings-search image {
 }
 
 .settings-option {
-  background: mix(@theme_bg, @theme_muted, 0.25);
-  border: 1px solid alpha(@theme_border, 0.55);
-  border-radius: 6px;
-  min-height: 60px;
-  padding: 10px 14px;
-  transition: border-color 150ms ease-out, box-shadow 150ms ease-out, background 150ms ease-out;
-}
-
-.settings-option:hover {
-  border-color: alpha(@theme_border, 0.95);
-}
-
-.settings-option.search-hit {
-  border-color: alpha(@theme_accent, 0.72);
-  box-shadow: 0 0 0 1px alpha(@theme_accent, 0.38), 0 0 14px alpha(@theme_glow, 0.24);
+  border: 1px solid @hairline;
+  border-radius: 10px;
+  min-height: 52px;
+  padding: 10px 20px;
 }
 
 .settings-option.tall {
-  padding: 14px 16px;
+  padding: 14px 20px;
 }
 
 .settings-option-title {
@@ -264,22 +225,22 @@ entry.settings-search image {
   color: @theme_accent;
 }
 
+
 /* ---------- Buttons ---------- */
 
 window.media-window button {
   min-height: 32px;
   padding: 0 12px;
   border-radius: 6px;
-  background: alpha(@theme_muted, 0.32);
-  border: 1px solid alpha(@theme_border, 0.8);
+  background: transparent;
+  border: 1px solid @hairline;
   box-shadow: none;
   color: @theme_text;
   transition: background 150ms ease-out, border-color 150ms ease-out;
 }
 
 window.media-window button:hover {
-  background: alpha(@theme_muted, 0.55);
-  border-color: alpha(@theme_accent, 0.55);
+  background: @row_hover;
 }
 
 window.media-window button:active {
@@ -291,14 +252,14 @@ window.media-window button:disabled {
 }
 
 window.media-window button.suggested-action {
-  background: @theme_accent;
-  border-color: @theme_accent;
-  color: @theme_on_accent;
-  font-weight: 700;
+  background: @nav_active;
+  border-color: transparent;
+  color: @theme_text;
+  font-weight: 600;
 }
 
 window.media-window button.suggested-action:hover {
-  background: mix(@theme_accent, @theme_text, 0.12);
+  background: mix(@theme_bg, @theme_accent, 0.26);
 }
 
 window.media-window button.destructive-action {
@@ -313,7 +274,7 @@ window.media-window button.flat {
 }
 
 window.media-window button.flat:hover {
-  background: alpha(@theme_highlight, 0.55);
+  background: @row_hover;
 }
 
 window.media-window button.reset-button {
@@ -324,37 +285,28 @@ window.media-window button.reset-button {
   color: @theme_dim_text;
 }
 
-window.media-window button.open-config {
-  min-height: 34px;
-  padding: 0 14px;
-  font-weight: 600;
-}
-
-window.media-window button.open-config image {
-  color: @theme_accent;
-}
-
 window.media-window button.chip {
   min-height: 28px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: 6px;
   font-size: 0.9em;
 }
 
 window.media-window button.chip.selected {
-  background: alpha(@theme_accent, 0.2);
-  border-color: alpha(@theme_accent, 0.8);
+  background: @nav_active;
+  border-color: transparent;
   color: @theme_text;
 }
+
 
 /* ---------- Inputs ---------- */
 
 window.media-window entry,
 window.media-window spinbutton {
   min-height: 32px;
-  border-radius: 5px;
-  background: alpha(@theme_bg, 0.65);
-  border: 1px solid alpha(@theme_border, 0.8);
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid @hairline;
   box-shadow: none;
   color: @theme_text;
 }
@@ -362,7 +314,7 @@ window.media-window spinbutton {
 window.media-window entry:focus-within,
 window.media-window spinbutton:focus-within {
   border-color: @theme_accent;
-  box-shadow: 0 0 0 1px alpha(@theme_accent, 0.38);
+  box-shadow: none;
 }
 
 window.media-window dropdown > button {
@@ -392,31 +344,30 @@ window.media-window popover listview > row:selected {
 }
 
 window.media-window switch {
-  min-width: 40px;
-  min-height: 22px;
+  min-width: 44px;
+  min-height: 26px;
   border-radius: 999px;
-  background: alpha(@theme_muted, 0.85);
-  border: 1px solid alpha(@theme_border, 0.9);
+  background: alpha(@theme_muted, 0.3);
+  border: 1px solid @hairline;
   box-shadow: none;
 }
 
 window.media-window switch:checked {
-  background: @theme_accent;
-  border-color: @theme_accent;
+  background: mix(@theme_bg, @theme_accent, 0.25);
 }
 
 window.media-window switch > slider {
   min-width: 18px;
   min-height: 18px;
-  margin: 1px;
+  margin: 3px;
   border-radius: 999px;
-  background: @theme_text;
+  background: @theme_dim_text;
   border: none;
-  box-shadow: 0 1px 3px alpha(@theme_shadow, 0.5);
+  box-shadow: none;
 }
 
 window.media-window switch:checked > slider {
-  background: @theme_on_accent;
+  background: @theme_accent;
 }
 
 window.media-window scale {
@@ -468,6 +419,7 @@ window.media-window scrollbar slider {
   background: alpha(@theme_muted, 0.9);
 }
 
+
 /* ---------- Theme swatches ---------- */
 
 .theme-card {
@@ -502,6 +454,7 @@ window.media-window scrollbar slider {
   border: 1px solid alpha(@theme_shadow, 0.4);
 }
 
+
 /* ---------- Banners and dialogs ---------- */
 
 .banner {
@@ -517,8 +470,30 @@ window.media-window scrollbar slider {
   border-color: alpha(@theme_danger, 0.45);
 }
 
+/* Buttons on a banner are its action: a solid accent, so they stand out on the tint. */
+window.media-window .banner button {
+  background: @theme_accent;
+  border-color: @theme_accent;
+  color: @theme_on_accent;
+  font-weight: 600;
+}
+
+window.media-window .banner button:hover {
+  background: mix(@theme_accent, @theme_text, 0.12);
+}
+
+window.media-window .banner.warning button {
+  background: @theme_danger;
+  border-color: @theme_danger;
+}
+
+window.media-window .banner.warning button:hover {
+  background: mix(@theme_danger, @theme_text, 0.12);
+}
+
 .toast {
-  margin: 18px;
+  /* Above the player bar and the status bar. */
+  margin: 18px 18px 104px;
   padding: 10px 16px;
   border-radius: 8px;
   background: @theme_surface;
@@ -557,6 +532,7 @@ textview.code-block > text {
   border: 1px solid alpha(@theme_border, 0.9);
 }
 
+
 /* ---------- Sidebar readouts and footer ---------- */
 
 .settings-navigation .nav-readout {
@@ -567,6 +543,7 @@ textview.code-block > text {
 .settings-navigation button.nav-item.active .nav-readout {
   color: @theme_text;
 }
+
 
 /* ---------- Tags ---------- */
 
@@ -589,28 +566,41 @@ textview.code-block > text {
   color: @theme_danger;
 }
 
-/* ---------- Tables ---------- */
 
-.settings-page.fill {
-  padding-bottom: 22px;
+/* Pages that fill the window (tables) run edge to edge under their toolbar. */
+
+.settings-page.fill,
+.settings-page.fill.narrow {
+  padding: 0;
 }
 
+
+/* A page's toolbar sits on a hairline above its table. */
+
 .toolbar {
-  margin: 14px 0 10px;
+  min-height: 46px;
+  margin: 0;
+  padding: 0 12px 0 14px;
+  background: transparent;
+  border-bottom: 1px solid @hairline;
 }
 
 .library-stack {
-  margin-top: 16px;
+  margin-top: 0;
 }
 
 .list-toolbar {
-  margin-bottom: 10px;
+  min-height: 46px;
+  margin: 0;
+  padding: 0 12px 0 14px;
+  background: transparent;
+  border-bottom: 1px solid @hairline;
 }
 
 .table-card {
-  background: mix(@theme_bg, @theme_muted, 0.18);
-  border: 1px solid alpha(@theme_border, 0.55);
-  border-radius: 6px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 window.media-window columnview {
@@ -620,16 +610,16 @@ window.media-window columnview {
 
 window.media-window columnview > header {
   background: transparent;
-  border-bottom: 1px solid alpha(@theme_border, 0.55);
+  border-bottom: 1px solid @hairline;
 }
 
 window.media-window columnview > header > button {
-  min-height: 30px;
-  padding: 0 10px;
+  min-height: 34px;
+  padding: 0 16px;
   border-radius: 0;
   border: none;
+  border-left: 1px solid @hairline;
   background: transparent;
-  font-weight: 700;
   color: @theme_dim_text;
 }
 
@@ -640,7 +630,7 @@ window.media-window columnview > header > button > box > label {
 }
 
 window.media-window columnview > header > button:hover {
-  background: alpha(@theme_highlight, 0.4);
+  background: @row_hover;
   color: @theme_text;
 }
 
@@ -653,23 +643,23 @@ window.media-window columnview > listview {
 }
 
 window.media-window columnview > listview > row {
-  border-radius: 5px;
-  margin: 0 4px;
-  transition: background 150ms ease-out;
+  border-radius: 0;
+  margin: 0;
+  min-height: 35px;
 }
 
 window.media-window columnview > listview > row:hover {
-  background: alpha(@theme_highlight, 0.55);
+  background: @row_hover;
 }
 
 window.media-window columnview > listview > row:selected {
-  background: alpha(@theme_accent, 0.16);
-  box-shadow: inset 0 0 0 1px alpha(@theme_accent, 0.42);
+  background: @nav_active;
+  box-shadow: none;
   color: @theme_text;
 }
 
 window.media-window columnview > listview > row > cell {
-  padding: 5px 10px;
+  padding: 6px 16px;
 }
 
 .cell-dim {
@@ -693,7 +683,7 @@ window.media-window button.tree-expander {
 }
 
 window.media-window button.tree-expander:hover {
-  background: alpha(@theme_highlight, 0.55);
+  background: @row_hover;
 }
 
 .empty-state {
@@ -707,25 +697,26 @@ window.media-window list.table-card {
 }
 
 window.media-window list.table-card > row {
-  border-radius: 5px;
-  margin: 2px 4px;
+  border-radius: 0;
+  margin: 0;
 }
 
 window.media-window list.table-card > row:hover {
-  background: alpha(@theme_highlight, 0.55);
+  background: @row_hover;
 }
 
 window.media-window list.table-card > row:selected {
-  background: alpha(@theme_accent, 0.16);
-  box-shadow: inset 0 0 0 1px alpha(@theme_accent, 0.42);
+  background: @nav_active;
+  box-shadow: none;
 }
+
 
 /* ---------- Segmented control ---------- */
 
 .segmented {
-  border-radius: 7px;
-  background: alpha(@theme_muted, 0.32);
-  border: 1px solid alpha(@theme_border, 0.8);
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid @hairline;
   padding: 2px;
 }
 
@@ -741,14 +732,15 @@ window.media-window .segmented button.segment {
 }
 
 window.media-window .segmented button.segment:hover {
-  background: alpha(@theme_highlight, 0.55);
+  background: @row_hover;
   color: @theme_text;
 }
 
 window.media-window .segmented button.segment:checked {
-  background: @theme_accent;
-  color: @theme_on_accent;
+  background: @nav_active;
+  color: @theme_text;
 }
+
 
 /* ---------- Equalizer ---------- */
 
@@ -808,13 +800,14 @@ window.media-window .fader.preamp .fader-scale > trough > highlight {
   background: alpha(@theme_border, 0.7);
 }
 
+
 /* ---------- Player bar ---------- */
 
 .player-bar {
-  background: @theme_surface;
-  border-top: 1px solid alpha(@theme_border, 0.55);
-  padding: 10px 18px;
-  min-height: 72px;
+  background: @theme_bg;
+  border-top: 1px solid @hairline;
+  padding: 6px 14px;
+  min-height: 56px;
 }
 
 .player-title {
@@ -872,22 +865,22 @@ window.media-window button.transport-toggle:checked {
 }
 
 window.media-window button.play-button {
-  min-width: 40px;
-  min-height: 40px;
+  min-width: 34px;
+  min-height: 34px;
   padding: 0;
   border-radius: 999px;
   border: none;
-  background: @theme_accent;
-  color: @theme_on_accent;
-  box-shadow: 0 0 14px alpha(@theme_glow, 0.3);
+  background: @nav_active;
+  color: @theme_accent;
+  box-shadow: none;
 }
 
 window.media-window button.play-button:hover {
-  background: mix(@theme_accent, @theme_text, 0.12);
+  background: mix(@theme_bg, @theme_accent, 0.26);
 }
 
 window.media-window button.play-button:active {
-  background: mix(@theme_accent, @theme_bg, 0.15);
+  background: mix(@theme_bg, @theme_accent, 0.32);
 }
 
 window.media-window scale.seek,
@@ -923,6 +916,7 @@ window.media-window scale.seek > marks > mark > indicator {
   background: alpha(@theme_dim_text, 0.7);
   color: transparent;
 }
+
 
 /* ---------- Pictures and cards ---------- */
 
@@ -982,7 +976,7 @@ progressbar.watch-progress > trough > progress {
 }
 
 .poster-grid > child:hover {
-  background: alpha(@theme_highlight, 0.55);
+  background: @row_hover;
 }
 
 .poster-grid > child:focus-visible {
@@ -1011,7 +1005,7 @@ window.media-window button.wide-card {
 }
 
 window.media-window button.wide-card:hover {
-  background: alpha(@theme_highlight, 0.55);
+  background: @row_hover;
 }
 
 window.media-window button.wide-card:focus-visible {
@@ -1022,7 +1016,7 @@ window.media-window button.wide-card:focus-visible {
   padding: 10px;
   border-radius: 8px;
   background: mix(@theme_bg, @theme_muted, 0.25);
-  border: 1px solid alpha(@theme_border, 0.55);
+  border: 1px solid @hairline;
   transition: border-color 150ms ease-out, background 150ms ease-out;
 }
 
@@ -1048,7 +1042,9 @@ window.media-window button.wide-card:hover .hover-play {
   opacity: 1;
 }
 
+
 /* Cards lift a little under the pointer. */
+
 .poster-card > .art,
 window.media-window button.wide-card .art {
   transition: transform 150ms ease-out, box-shadow 150ms ease-out;
@@ -1077,6 +1073,7 @@ window.media-window button.wide-card:hover .art {
   color: @theme_dim_text;
 }
 
+
 /* ---------- Detail views ---------- */
 
 window.media-window button.back-button {
@@ -1093,7 +1090,7 @@ window.media-window button.back-button:hover {
   padding: 12px;
   border-radius: 10px;
   background: alpha(@theme_surface, 0.94);
-  border: 1px solid alpha(@theme_border, 0.55);
+  border: 1px solid @hairline;
   box-shadow: 0 6px 24px alpha(@theme_shadow, 0.55), 0 0 20px alpha(@theme_glow, 0.1);
 }
 
@@ -1129,7 +1126,7 @@ window.media-window .player-info:hover button.bar-close {
 .home-hero {
   min-height: 220px;
   border-radius: 12px;
-  border: 1px solid alpha(@theme_border, 0.55);
+  border: 1px solid @hairline;
   box-shadow: 0 4px 18px alpha(@theme_shadow, 0.35);
   background: mix(@theme_bg, @theme_muted, 0.4);
 }
@@ -1166,7 +1163,7 @@ progressbar.hero-progress > trough > progress {
 
 .detail-hero.has-backdrop {
   border-radius: 12px;
-  border: 1px solid alpha(@theme_border, 0.55);
+  border: 1px solid @hairline;
   box-shadow: 0 4px 18px alpha(@theme_shadow, 0.35);
 }
 
@@ -1189,7 +1186,7 @@ progressbar.hero-progress > trough > progress {
 }
 
 .detail-meta {
-  margin: 2px 0;
+  font-size: 0.86em;
 }
 
 .chip {
@@ -1222,7 +1219,7 @@ progressbar.hero-progress > trough > progress {
   padding: 12px 14px;
   border-radius: 6px;
   background: mix(@theme_bg, @theme_muted, 0.25);
-  border: 1px solid alpha(@theme_border, 0.55);
+  border: 1px solid @hairline;
 }
 
 .info-name {
@@ -1243,6 +1240,7 @@ progressbar.hero-progress > trough > progress {
   color: @theme_text;
 }
 
+
 /* ---------- The player ---------- */
 
 .settings-page.bare,
@@ -1259,7 +1257,7 @@ progressbar.hero-progress > trough > progress {
   padding: 10px 14px;
   border-radius: 9px;
   background: alpha(@theme_surface, 0.86);
-  border: 1px solid alpha(@theme_border, 0.55);
+  border: 1px solid @hairline;
   box-shadow: 0 4px 16px alpha(@theme_shadow, 0.5);
   transition: opacity 200ms ease-out;
 }
@@ -1279,7 +1277,7 @@ progressbar.hero-progress > trough > progress {
   padding: 8px 14px 10px;
   border-radius: 9px;
   background: alpha(@theme_surface, 0.9);
-  border: 1px solid alpha(@theme_border, 0.55);
+  border: 1px solid @hairline;
   box-shadow: 0 4px 16px alpha(@theme_shadow, 0.5), 0 0 28px alpha(@theme_glow, 0.08);
   transition: opacity 200ms ease-out;
 }
@@ -1325,12 +1323,14 @@ window.media-window menubutton.osd-button.dim > button {
   font-size: 1.1em;
   font-weight: 700;
   background: alpha(@theme_surface, 0.9);
-  border: 1px solid alpha(@theme_border, 0.55);
+  border: 1px solid @hairline;
   box-shadow: 0 4px 16px alpha(@theme_shadow, 0.5), 0 0 14px alpha(@theme_glow, 0.14);
 }
 
+
 /* Fullscreen: the controls sit on soft gradients across the picture's
    edges instead of cards, covering less of it. */
+
 window.fullscreen .osd-top,
 window.fullscreen .osd-controls {
   margin: 0;
@@ -1412,6 +1412,7 @@ window.media-window popover.scrub-popover > contents {
   min-height: 34px;
 }
 
+
 /* ---------- Menus and drag and drop ---------- */
 
 window.media-window popover.menu-popover > contents {
@@ -1454,7 +1455,7 @@ window.media-window button.match-row {
   padding: 6px 10px 6px 6px;
   border-radius: 8px;
   background: mix(@theme_bg, @theme_muted, 0.25);
-  border: 1px solid alpha(@theme_border, 0.55);
+  border: 1px solid @hairline;
 }
 
 window.media-window button.match-row {
@@ -1476,4 +1477,254 @@ window.media-window button.wide-card .card-title {
 
 window.media-window button.wide-card .card-meta {
   font-weight: 400;
+}
+
+
+/* ---------- Top bar and status bar ---------- */
+
+.window-frame {
+  background: @theme_bg;
+}
+
+.top-bar {
+  min-height: 46px;
+  padding: 0 10px 0 12px;
+  border-bottom: 1px solid @hairline;
+}
+
+.crumbs {
+  margin-left: 8px;
+}
+
+.crumb-root,
+.crumb-sep {
+  color: @theme_dim_text;
+}
+
+.crumb {
+  color: @theme_accent;
+}
+
+window.media-window button.bar-button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 6px;
+  border-color: transparent;
+  background: transparent;
+  color: @theme_dim_text;
+}
+
+window.media-window button.bar-button:hover {
+  background: @row_hover;
+  color: @theme_text;
+}
+
+/* A config-file menu in the top bar looks like the other bar buttons. */
+window.media-window menubutton.bar-button > button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  border-radius: 6px;
+  border-color: transparent;
+  background: transparent;
+  color: @theme_dim_text;
+}
+
+window.media-window menubutton.bar-button > button:hover {
+  background: @row_hover;
+  color: @theme_text;
+}
+
+window.media-window entry.bar-search {
+  min-height: 30px;
+  margin-right: 4px;
+}
+
+.status-bar {
+  min-height: 34px;
+  padding: 0 16px 0 10px;
+  border-top: 1px solid @hairline;
+  font-size: 0.86em;
+  color: @theme_dim_text;
+}
+
+window.media-window button.status-help {
+  min-height: 24px;
+  padding: 0 6px;
+  border: none;
+  background: transparent;
+  color: @theme_dim_text;
+  font-weight: 500;
+}
+
+window.media-window button.status-help:hover {
+  color: @theme_text;
+}
+
+.status-key {
+  color: @theme_text;
+}
+
+.settings-navigation .nav-group.first {
+  margin-top: 0;
+  padding-top: 6px;
+  border-top: none;
+}
+
+.settings-navigation.compact .nav-group {
+  margin: 8px -6px;
+  padding: 0;
+  min-height: 0;
+  font-size: 0;
+}
+
+.settings-navigation.compact .nav-group.first {
+  border-top: none;
+  margin: 0;
+}
+
+.group-list {
+  border: 1px solid @hairline;
+  border-radius: 10px;
+}
+
+.group-list .settings-option {
+  border: none;
+  border-top: 1px solid @divider;
+  border-radius: 0;
+}
+
+.group-list > .settings-option:first-child,
+.group-list > box:first-child > .settings-option:first-child {
+  border-top: none;
+}
+
+
+/* A line of help above a list, on the same hairline as a toolbar. */
+.page-hint {
+  padding: 12px 14px;
+  border-bottom: 1px solid @hairline;
+  color: @theme_dim_text;
+}
+
+/* Toolbar controls sit centred in the row instead of stretching to it. */
+
+.toolbar > *,
+.list-toolbar > * {
+  margin-top: 7px;
+  margin-bottom: 7px;
+}
+
+window.media-window columnview > header,
+window.media-window columnview > header > button,
+window.media-window columnview > header > button > box {
+  font-size: 1em;
+}
+
+
+/* ---------- Settings dialog ---------- */
+
+.settings-veil {
+  background: @veil;
+}
+
+.settings-dialog {
+  background: @theme_bg;
+  border: 1px solid @hairline;
+  border-radius: 14px;
+  box-shadow: 0 8px 40px alpha(@theme_shadow, 0.6);
+}
+
+.settings-dialog-side {
+  min-width: 280px;
+  padding: 22px 14px;
+  border-right: 1px solid @hairline;
+}
+
+.settings-dialog.narrow .settings-dialog-side {
+  min-width: 200px;
+  padding: 18px 8px;
+}
+
+.settings-dialog.narrow .dialog-head {
+  padding: 0 12px 0 20px;
+}
+
+.settings-dialog.narrow .settings-dialog-main .settings-page {
+  padding: 16px 16px 24px;
+}
+
+.dialog-heading {
+  margin: 0 4px 16px;
+  font-size: 0.92em;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+  color: @theme_dim_text;
+}
+
+window.media-window button.dialog-nav {
+  min-height: 0;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+}
+
+window.media-window button.dialog-nav image {
+  margin-top: 2px;
+  color: @theme_dim_text;
+}
+
+window.media-window button.dialog-nav:hover {
+  background: @row_hover;
+}
+
+window.media-window button.dialog-nav.active {
+  background: @lift_active;
+}
+
+window.media-window button.dialog-nav.active image {
+  color: @theme_accent;
+}
+
+.dialog-nav-title {
+  font-weight: 600;
+  color: alpha(@theme_text, 0.82);
+}
+
+window.media-window button.dialog-nav.active .dialog-nav-title {
+  color: @theme_text;
+}
+
+.dialog-nav-summary {
+  font-size: 0.86em;
+  color: @theme_dim_text;
+}
+
+.settings-dialog-main {
+  background: @lift;
+}
+
+.dialog-head {
+  min-height: 64px;
+  padding: 0 18px 0 32px;
+  border-bottom: 1px solid @hairline;
+}
+
+.dialog-title {
+  font-size: 1.2em;
+  font-weight: 600;
+}
+
+.dialog-empty {
+  color: @theme_dim_text;
+}
+
+.settings-dialog-main .settings-page {
+  padding: 28px 40px 40px;
+}
+
+.settings-dialog-main .settings-page.narrow {
+  padding: 20px 20px 28px;
 }

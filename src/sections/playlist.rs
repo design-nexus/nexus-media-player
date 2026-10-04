@@ -137,8 +137,7 @@ fn export(id: i64, tracks: Vec<Rc<crate::library::Video>>) {
 
 /// The page for one playlist.
 pub fn build(id: i64) -> gtk::Widget {
-    let name = name_of(id);
-    let page = widgets::page(&format!("playlist-{id}"), &name, "", &[]);
+    let page = widgets::page(&format!("playlist-{id}"));
     page.fill();
     let current: Rc<RefCell<Vec<Rc<crate::library::Video>>>> = Rc::default();
 

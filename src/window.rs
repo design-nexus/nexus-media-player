@@ -1,11 +1,13 @@
-//! The main window: navigation sidebar with library search, a stack of pages
-//! built the first time they're shown, and the player bar underneath. In
-//! fullscreen only the player page shows.
+//! The main window: a top bar (sidebar toggle, where you are, search,
+//! settings, close), the navigation sidebar, a stack of pages built the first
+//! time they're shown, the player bar and a status bar underneath. In
+//! fullscreen only the player page shows. Settings opens as a dialog over the
+//! window (see `settings_dialog`).
 
 use crate::library::store;
 use crate::sections::{self, Section};
 use crate::widgets;
-use crate::{player, playerbar, prefs, theme};
+use crate::{fmt, panel_dialog, player, playerbar, prefs, settings_dialog, theme};
 use gtk::prelude::*;
 use gtk::{gdk, glib};
 use std::cell::RefCell;
@@ -20,6 +22,10 @@ struct Ui {
     playlist_box: gtk::Box,
     search: gtk::SearchEntry,
     bar: gtk::Box,
+    /// The top bar and the status bar, hidden in fullscreen.
+    chrome: Vec<gtk::Widget>,
+    /// The current page's name, in the top bar.
+    crumb: gtk::Label,
     pages: HashMap<String, gtk::Widget>,
     sections: Vec<Section>,
     current: String,
@@ -146,36 +152,17 @@ fn build(app: &gtk::Application) {
     let nav = gtk::Box::new(gtk::Orientation::Vertical, 0);
     nav.add_css_class("settings-navigation");
     nav.set_hexpand(false);
-    let heading = widgets::label("MEDIA PLAYER", "menu-heading");
-    heading.add_css_class("compact-hide");
-    heading.set_hexpand(true);
-    nav.append(&nav_head(&heading));
-
-    let search = gtk::SearchEntry::new();
-    search.set_placeholder_text(Some("Search library"));
-    search.add_css_class("settings-search");
-    search.add_css_class("compact-hide");
-    nav.append(&search);
-
     let list = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let mut nav_items = HashMap::new();
     let playlist_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let mut last_group = "";
-    // Settings sits at the bottom of the sidebar, on its own.
-    let mut settings_button = None;
-    for s in sections.iter().filter(|s| s.nav) {
-        if s.id == "settings" {
-            let (button, label) = nav_button(s.icon, s.title, s.description);
-            label.add_css_class("compact-hide");
-            button.add_css_class("nav-settings");
-            button.connect_clicked(|_| navigate("settings"));
-            nav_items.insert(s.id.to_string(), button.clone());
-            settings_button = Some(button);
-            continue;
-        }
+    // Settings opens as a dialog from the top bar, so it has no nav item.
+    for s in sections.iter().filter(|s| s.nav && s.id != "settings") {
         if s.group != last_group {
             let g = widgets::label(&s.group.to_uppercase(), "nav-group");
-            g.add_css_class("compact-hide");
+            if last_group.is_empty() {
+                g.add_css_class("first");
+            }
             list.append(&g);
             last_group = s.group;
         }
@@ -202,34 +189,6 @@ fn build(app: &gtk::Application) {
         .child(&list)
         .build();
     nav.append(&nav_scroll);
-    if let Some(b) = &settings_button {
-        nav.append(b);
-    }
-
-    let footer = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    footer.add_css_class("nav-footer");
-    footer.add_css_class("compact-hide");
-    let version = widgets::label(concat!("Nexus Media Player ", env!("CARGO_PKG_VERSION")), "dim");
-    version.set_hexpand(true);
-    version.set_ellipsize(gtk::pango::EllipsizeMode::End);
-    footer.append(&version);
-    let scan_label = widgets::label("", "nav-readout");
-    scan_label.add_css_class("mono");
-    footer.append(&scan_label);
-    nav.append(&footer);
-    {
-        let l = scan_label.clone();
-        store::subscribe(&scan_label, move |c| {
-            if c == store::Change::Scan {
-                l.set_text(&match (store::scanning(), store::busy()) {
-                    (Some((done, total)), _) if total > 0 => format!("{}%", done * 100 / total),
-                    (Some(_), _) => "Scanning".into(),
-                    (None, Some(b)) => b,
-                    (None, None) => String::new(),
-                });
-            }
-        });
-    }
 
     // ----- Content -----
     let stack = gtk::Stack::new();
@@ -253,11 +212,20 @@ fn build(app: &gtk::Application) {
     });
 
     let body = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    body.set_vexpand(true);
     body.append(&nav);
     body.append(&content);
 
+    let (top, crumb, search) = top_bar(&window);
+    let status = status_bar();
+    let frame = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    frame.add_css_class("window-frame");
+    frame.append(&top);
+    frame.append(&body);
+    frame.append(&status);
+
     let overlay = gtk::Overlay::new();
-    overlay.set_child(Some(&body));
+    overlay.set_child(Some(&frame));
     window.set_child(Some(&overlay));
 
     install_keys(&window, &search);
@@ -265,9 +233,6 @@ fn build(app: &gtk::Application) {
     // Video drawing needs the window's surface; set it up as soon as there is one.
     window.connect_realize(player::attach);
     window.connect_fullscreened_notify(|w| apply_fullscreen(w.is_fullscreen()));
-    search.connect_search_changed(|e| on_search(&e.text()));
-    search.connect_activate(|_| sections::search::focus_results());
-    search.connect_stop_search(|e| e.set_text(""));
 
     // Narrow windows (a tiled half-screen) get an icon-only sidebar.
     let apply_width = {
@@ -275,6 +240,8 @@ fn build(app: &gtk::Application) {
         move |w: &gtk::ApplicationWindow| {
             let width = if w.width() > 0 { w.width() } else { w.default_width() };
             let narrow = width > 0 && width < 980;
+            settings_dialog::fit(w);
+            panel_dialog::fit(w);
             if narrow == NARROW.with(|n| n.get()) && nav.has_css_class("sized") {
                 return;
             }
@@ -302,6 +269,8 @@ fn build(app: &gtk::Application) {
         playlist_box: playlist_box.clone(),
         search,
         bar,
+        chrome: vec![top.upcast(), status.upcast()],
+        crumb,
         pages: HashMap::new(),
         sections,
         current: String::new(),
@@ -318,20 +287,109 @@ fn build(app: &gtk::Application) {
     refresh_playlists();
 }
 
-/// Hide everything marked `compact-hide` in the sidebar (labels, headings,
-/// search, footer) when it's icon-only.
-/// The button that collapses the sidebar to icons, beside the app heading.
-fn nav_head(heading: &gtk::Label) -> gtk::Box {
-    let row = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    row.add_css_class("nav-head");
-    row.append(heading);
-    let button = gtk::Button::from_icon_name("sidebar-show-symbolic");
-    button.add_css_class("nav-collapse");
-    button.set_tooltip_text(Some("Collapse or expand the sidebar (Ctrl+B)"));
-    button.set_valign(gtk::Align::Center);
-    button.connect_clicked(|_| toggle_sidebar());
-    row.append(&button);
-    row
+/// The bar across the top: the sidebar toggle and where you are on the left;
+/// search, settings and close on the right.
+fn top_bar(window: &gtk::ApplicationWindow) -> (gtk::Box, gtk::Label, gtk::SearchEntry) {
+    let bar = widgets::hbox(4);
+    bar.add_css_class("top-bar");
+    let toggle = widgets::bar_button("sidebar-show-symbolic", "Collapse or expand the sidebar (Ctrl+B)");
+    toggle.connect_clicked(|_| toggle_sidebar());
+    bar.append(&toggle);
+    let crumbs = widgets::hbox(10);
+    crumbs.add_css_class("crumbs");
+    crumbs.append(&widgets::label("Media Player", "crumb-root"));
+    crumbs.append(&widgets::label("/", "crumb-sep"));
+    let crumb = widgets::label("", "crumb");
+    crumb.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    crumbs.append(&crumb);
+    crumbs.set_hexpand(true);
+    bar.append(&crumbs);
+
+    let search = gtk::SearchEntry::new();
+    search.set_placeholder_text(Some("Search library"));
+    search.add_css_class("bar-search");
+    search.set_width_chars(26);
+    search.set_visible(false);
+    bar.append(&search);
+    let find = widgets::bar_button("system-search-symbolic", "Search the library (Ctrl+F)");
+    let s = search.clone();
+    find.connect_clicked(move |_| {
+        if s.is_visible() && s.text().is_empty() {
+            s.set_visible(false);
+        } else {
+            s.set_visible(true);
+            s.grab_focus();
+        }
+    });
+    bar.append(&find);
+    search.connect_search_changed(|e| on_search(&e.text()));
+    search.connect_activate(|_| sections::search::focus_results());
+    search.connect_stop_search(|e| {
+        e.set_text("");
+        e.set_visible(false);
+    });
+
+    let eq = widgets::bar_button("nmp-equalizer-symbolic", "Equalizer");
+    eq.connect_clicked(|_| open_equalizer());
+    bar.append(&eq);
+    let gear = widgets::bar_button("emblem-system-symbolic", "Settings");
+    gear.connect_clicked(|_| settings_dialog::open());
+    bar.append(&gear);
+    let close = widgets::bar_button("window-close-symbolic", "Close (Ctrl+Q)");
+    let w = window.clone();
+    close.connect_clicked(move |_| w.close());
+    bar.append(&close);
+    (bar, crumb, search)
+}
+
+/// The bar along the bottom: the shortcuts on the left, the library on the right.
+fn status_bar() -> gtk::Box {
+    let bar = widgets::hbox(16);
+    bar.add_css_class("status-bar");
+    let help = gtk::Button::new();
+    help.add_css_class("status-help");
+    let content = widgets::hbox(10);
+    content.append(&widgets::label("F1", "status-key"));
+    content.append(&widgets::label("Shortcuts", ""));
+    help.set_child(Some(&content));
+    help.set_tooltip_text(Some("Show the keyboard shortcuts"));
+    help.connect_clicked(|_| show_shortcuts());
+    bar.append(&help);
+    let spacer = widgets::hbox(0);
+    spacer.set_hexpand(true);
+    bar.append(&spacer);
+    let readout = widgets::label("", "status-readout");
+    readout.set_ellipsize(gtk::pango::EllipsizeMode::Start);
+    bar.append(&readout);
+    let refresh = {
+        let readout = readout.clone();
+        move || {
+            let mut parts = Vec::new();
+            match (store::scanning(), store::busy()) {
+                (Some((done, total)), _) if total > 0 => parts.push(format!("Scanning {}%", done * 100 / total)),
+                (Some(_), _) => parts.push("Scanning".to_string()),
+                (None, Some(b)) => parts.push(b),
+                (None, None) => {}
+            }
+            if store::loaded() {
+                let videos = store::videos();
+                let secs: f64 = videos.iter().map(|v| v.duration).sum();
+                parts.push(fmt::count(videos.len(), "video", "videos"));
+                if secs > 0.0 {
+                    parts.push(fmt::total(secs));
+                }
+            }
+            readout.set_text(&parts.join(" · "));
+        }
+    };
+    refresh();
+    store::subscribe(&readout, move |_| refresh());
+    bar
+}
+
+/// The layer over the window, for toasts and the settings dialog.
+pub fn overlay() -> Option<gtk::Overlay> {
+    ui().map(|u| u.borrow().overlay.clone())
 }
 
 /// The sidebar shows only icons: hide the labels, centre the icons and the toggle.
@@ -361,10 +419,6 @@ fn set_compact_hidden(root: &gtk::Box, compact: bool) {
             && let Some(content) = w.downcast_ref::<gtk::Button>().and_then(|b| b.child())
         {
             content.set_halign(if compact { gtk::Align::Center } else { gtk::Align::Fill });
-        }
-        if w.has_css_class("nav-collapse") {
-            w.set_halign(if compact { gtk::Align::Center } else { gtk::Align::End });
-            w.set_hexpand(compact);
         }
         let mut child = w.first_child();
         while let Some(c) = child {
@@ -424,7 +478,7 @@ pub const SHORTCUTS: &[(&str, Keys)] = &[
             (&["Ctrl", "F"], "Search the library"),
             (&["Alt", "←"], "Back (or the mouse's back button)"),
             (&["Ctrl", "B"], "Collapse or expand the sidebar"),
-            (&["?"], "These shortcuts"),
+            (&["F1"], "These shortcuts"),
             (&["Ctrl", "Q"], "Close"),
         ],
     ),
@@ -470,12 +524,34 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
         let on_player = current() == "now-playing";
         let p = prefs::get();
         let stop = glib::Propagation::Stop;
+        if panel_dialog::is_open() && key == gdk::Key::Escape {
+            panel_dialog::close();
+            return stop;
+        }
+        if settings_dialog::is_open() {
+            return match key {
+                gdk::Key::Escape => {
+                    settings_dialog::escape();
+                    stop
+                }
+                gdk::Key::f if ctrl => {
+                    settings_dialog::focus_search();
+                    stop
+                }
+                gdk::Key::q | gdk::Key::w if ctrl => {
+                    w2.close();
+                    stop
+                }
+                _ => glib::Propagation::Proceed,
+            };
+        }
         if ctrl {
             return match key {
                 gdk::Key::f => {
                     if w2.is_fullscreen() {
                         set_fullscreen(false);
                     }
+                    s2.set_visible(true);
                     s2.grab_focus();
                     stop
                 }
@@ -529,7 +605,10 @@ fn install_keys(window: &gtk::ApplicationWindow, search: &gtk::SearchEntry) {
             gdk::Key::question | gdk::Key::F1 => show_shortcuts(),
             gdk::Key::space => player::toggle(),
             gdk::Key::Escape if w2.is_fullscreen() => set_fullscreen(false),
-            gdk::Key::Escape if !s2.text().is_empty() => s2.set_text(""),
+            gdk::Key::Escape if s2.is_visible() => {
+                s2.set_text("");
+                s2.set_visible(false);
+            }
             // Esc closes an open movie or show, and goes no further.
             gdk::Key::Escape if current() == "movies" => {
                 sections::movies::back_out();
@@ -770,6 +849,9 @@ fn apply_fullscreen(on: bool) {
     let Some(ui) = ui() else { return };
     let u = ui.borrow();
     u.nav.set_visible(!on);
+    for w in &u.chrome {
+        w.set_visible(!on);
+    }
     u.bar.set_visible(!on && u.current != "now-playing" && player::current().is_some());
     if on {
         u.window.add_css_class("fullscreen");
@@ -836,10 +918,10 @@ fn ensure_built(id: &str) -> bool {
     } else {
         let section = {
             let u = ui.borrow();
-            u.sections.iter().find(|s| s.id == id).map(|s| (s.id, s.title, s.description, (s.files)(), s.build, s.fill, s.bare))
+            u.sections.iter().find(|s| s.id == id).map(|s| (s.id, s.build, s.fill, s.bare))
         };
-        let Some((sid, title, description, files, build, fill, bare)) = section else { return false };
-        let page = widgets::page(sid, title, description, &files);
+        let Some((sid, build, fill, bare)) = section else { return false };
+        let page = widgets::page(sid);
         if fill {
             page.fill();
         }
@@ -869,6 +951,18 @@ pub fn navigate(id: &str) {
         return;
     }
     let Some(ui) = ui() else { return };
+    // Settings and the equalizer are cards over the window, not pages.
+    if id == "settings" || id == "equalizer" {
+        if id == "settings" {
+            settings_dialog::open();
+        } else {
+            open_equalizer();
+        }
+        if !ui.borrow().current.is_empty() {
+            return;
+        }
+    }
+    let id = if id == "settings" || id == "equalizer" { "home" } else { id };
     if id.starts_with("playlist:") && !store::loaded() {
         PENDING.with(|p| *p.borrow_mut() = Some(id.to_string()));
     }
@@ -896,6 +990,7 @@ pub fn navigate(id: &str) {
     }
     u.stack.set_visible_child_name(&id);
     u.current = id.clone();
+    u.crumb.set_text(&page_title(&u.sections, &id));
     // The player has its own controls; the bar is for everywhere else.
     let full = u.window.is_fullscreen();
     u.bar.set_visible(id != "now-playing" && !full && player::current().is_some());
@@ -909,6 +1004,7 @@ pub fn navigate(id: &str) {
         if !search.text().is_empty() {
             ui.borrow_mut().before_search.clear();
             search.set_text("");
+            search.set_visible(false);
         }
         prefs::update(|p| p.last_section = id);
     }
@@ -933,6 +1029,19 @@ fn when_loaded(f: impl FnOnce() + 'static) {
 }
 
 /// Drop a page so it's rebuilt next time (a deleted playlist).
+/// The equalizer, as a card over the window.
+pub fn open_equalizer() {
+    panel_dialog::open("equalizer", "Equalizer", sections::equalizer::build);
+}
+
+/// A page's name for the top bar: its section's title or the playlist's name.
+fn page_title(sections: &[Section], id: &str) -> String {
+    if let Some(pid) = id.strip_prefix("playlist:").and_then(|p| p.parse::<i64>().ok()) {
+        return store::playlists().into_iter().find(|p| p.id == pid).map(|p| p.name).unwrap_or_default();
+    }
+    sections.iter().find(|s| s.id == id).map(|s| s.title.to_string()).unwrap_or_default()
+}
+
 pub fn remove_page(id: &str) {
     let Some(ui) = ui() else { return };
     let old = ui.borrow_mut().pages.remove(id);

@@ -4,7 +4,12 @@
   MPRIS name) is `nexus-media-player`.
 
 - GTK4 (gtk4-rs 0.11) + Rust + libmpv (hand-written FFI, `player/mpv.rs`, links
-  `libmpv.so.2`). No libadwaita. Follows `~/Projects/STYLE.md`; theme, window, widgets,
+  `libmpv.so.2`). No libadwaita. The window is one flat, monospace surface split by
+  hairlines: a top bar (sidebar toggle, `Media Player / <page>`, search, settings,
+  close), the sidebar, the page, the player bar and a status bar (`F1 Shortcuts` ·
+  library size); fullscreen hides all of it. Pages have no title header. Settings is a
+  card over the window (`settings_dialog.rs`) listing the settings page's groups;
+  `navigate("settings")` opens it. The equalizer is a card too (`panel_dialog.rs`), from the top bar or `navigate("equalizer")`. Theme, window, widgets,
   stylesheet, queue, playlists and MPRIS started as copies of Nexus Music
   (`~/Projects/nexus-music`). Every colour is a `@theme_*` token; `@theme_video` (derived
   in `theme::palette_css`) is the dark surround of the picture.
