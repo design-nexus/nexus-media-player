@@ -266,7 +266,7 @@ pub fn palette_css(p: &Palette) -> String {
          @define-color theme_muted {};\n@define-color theme_highlight {};\n@define-color theme_danger {};\n\
          @define-color theme_glow {};\n@define-color theme_shadow {};\n\
          @define-color theme_on_accent {};\n\
-         @define-color theme_video {};\n",
+         @define-color theme_video {};\n@define-color theme_on_video {};\n",
         p.bg,
         p.surface,
         p.text,
@@ -281,6 +281,8 @@ pub fn palette_css(p: &Palette) -> String {
         if p.light { "#ffffff" } else { &p.bg },
         // Around the picture: the darkest colour the theme has.
         if p.light { &p.text } else { &p.shadow },
+        // Text over the picture's dark surround.
+        if p.light { &p.bg } else { &p.text },
     )
 }
 

@@ -1297,9 +1297,50 @@ window.media-window menubutton.osd-button.dim > button {
   box-shadow: 0 4px 16px alpha(@theme_shadow, 0.5), 0 0 14px alpha(@theme_glow, 0.14);
 }
 
+/* Fullscreen: the controls sit on soft gradients across the picture's
+   edges instead of cards, covering less of it. */
 window.fullscreen .osd-top,
 window.fullscreen .osd-controls {
-  margin: 24px 32px;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background-color: transparent;
+}
+
+window.fullscreen .osd-top {
+  padding: 28px 44px 64px;
+  background-image: linear-gradient(to bottom, alpha(@theme_video, 0.85), alpha(@theme_video, 0));
+}
+
+window.fullscreen .osd-controls {
+  padding: 72px 44px 26px;
+  background-image: linear-gradient(to top, alpha(@theme_video, 0.92), alpha(@theme_video, 0.6) 55%, alpha(@theme_video, 0));
+}
+
+window.fullscreen .osd-title {
+  color: @theme_on_video;
+  font-size: 1.3em;
+}
+
+window.fullscreen .osd-subtitle,
+window.fullscreen .osd-controls .time-readout {
+  color: alpha(@theme_on_video, 0.72);
+}
+
+window.fullscreen .osd-controls button.osd-button,
+window.fullscreen .osd-controls menubutton.osd-button > button {
+  color: alpha(@theme_on_video, 0.9);
+}
+
+window.fullscreen .osd-controls button.osd-button:hover,
+window.fullscreen .osd-controls menubutton.osd-button > button:hover {
+  color: @theme_on_video;
+  background: alpha(@theme_on_video, 0.14);
+}
+
+window.fullscreen .osd-controls scale > trough {
+  background: alpha(@theme_on_video, 0.3);
 }
 
 window.media-window popover.scrub-popover > contents {
