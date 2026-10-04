@@ -29,6 +29,18 @@ pub fn set_progress(strip: &gtk::ProgressBar, fraction: f64) {
     strip.set_visible(fraction > 0.0);
 }
 
+/// A play glyph in the middle of a picture, shown while the pointer is over
+/// its card.
+pub fn hover_play() -> gtk::Image {
+    let play = gtk::Image::from_icon_name("media-playback-start-symbolic");
+    play.add_css_class("hover-play");
+    play.set_pixel_size(24);
+    play.set_halign(gtk::Align::Center);
+    play.set_valign(gtk::Align::Center);
+    play.set_can_target(false);
+    play
+}
+
 /// A small round mark in a picture's corner: a tick when watched, or a count.
 pub fn badge() -> gtk::Label {
     let l = gtk::Label::new(None);
@@ -79,6 +91,7 @@ impl PosterCard {
         art.root.add_overlay(&strip);
         let badge = badge();
         art.root.add_overlay(&badge);
+        art.root.add_overlay(&hover_play());
         root.append(&art.root);
         let title = widgets::label("", "card-title");
         title.set_ellipsize(gtk::pango::EllipsizeMode::End);
@@ -226,6 +239,10 @@ pub fn wide_card(v: &Rc<Video>, width: i32, subtitle: &str) -> gtk::Button {
     let strip = progress_strip();
     set_progress(&strip, v.progress());
     art.root.add_overlay(&strip);
+    let tick = badge();
+    set_badge(&tick, v.watch.get().watched, 0);
+    art.root.add_overlay(&tick);
+    art.root.add_overlay(&hover_play());
     col.append(&art.root);
     let (title, second) = match v.kind {
         Kind::Episode => (v.show.clone(), v.episode_line()),
@@ -300,11 +317,7 @@ pub fn episode_row(v: &Rc<Video>) -> gtk::Box {
     let strip = progress_strip();
     set_progress(&strip, v.progress());
     art.root.add_overlay(&strip);
-    let play = gtk::Image::from_icon_name("media-playback-start-symbolic");
-    play.add_css_class("hover-play");
-    play.set_pixel_size(28);
-    play.set_can_target(false);
-    art.root.add_overlay(&play);
+    art.root.add_overlay(&hover_play());
     row.append(&art.root);
 
     let text = widgets::vbox(3);

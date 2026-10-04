@@ -1027,14 +1027,33 @@ window.media-window button.wide-card:focus-visible {
   background: mix(@theme_bg, @theme_muted, 0.4);
 }
 
-.episode-row .hover-play {
+.hover-play {
+  min-width: 46px;
+  min-height: 46px;
+  border-radius: 999px;
   opacity: 0;
   color: @theme_text;
+  background: alpha(@theme_bg, 0.72);
+  box-shadow: 0 2px 10px alpha(@theme_shadow, 0.5);
   transition: opacity 150ms ease-out;
 }
 
-.episode-row:hover .hover-play {
-  opacity: 0.95;
+.episode-row:hover .hover-play,
+.poster-card:hover .hover-play,
+window.media-window button.wide-card:hover .hover-play {
+  opacity: 1;
+}
+
+/* Cards lift a little under the pointer. */
+.poster-card > .art,
+window.media-window button.wide-card .art {
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.poster-card:hover > .art,
+window.media-window button.wide-card:hover .art {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px alpha(@theme_shadow, 0.5);
 }
 
 .episode-title {
