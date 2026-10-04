@@ -524,6 +524,5 @@ pub fn build(page: &Page) {
             g.add(&widgets::row(what, "", Some(widgets::key_caps(caps).upcast_ref())));
         }
     }
-    g.note("Press <b>?</b> anywhere to see these.");
-    g.note("Media keys work through MPRIS. From a terminal or a binding: <tt>media-player --play-pause</tt>, <tt>--next</tt>, <tt>--previous</tt>.");
+    g.note("Press <b>?</b> anywhere to see these. Media keys work through MPRIS. From a terminal or a binding: <tt>media-player --play-pause</tt>, <tt>--next</tt>, <tt>--previous</tt>.");
 }
