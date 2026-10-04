@@ -70,6 +70,8 @@ pub fn build(page: &Page) {
     store::subscribe(&page.body, move |c| match c {
         store::Change::Library => f(),
         store::Change::Watch if !body.is_mapped() => d.set(true),
+        // Not while playing: positions move every few seconds.
+        store::Change::Watch if crate::player::state() != crate::player::State::Playing => f(),
         _ => {}
     });
     page.body.connect_map(move |_| {

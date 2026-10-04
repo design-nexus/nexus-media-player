@@ -159,6 +159,14 @@ pub fn video_menu(anchor: &gtk::Widget, x: f64, y: f64, videos: Vec<Rc<Video>>, 
     let all_watched = videos.iter().all(|v| v.watch.get().watched);
     let vs = videos.clone();
     m.add(if all_watched { "Mark as unwatched" } else { "Mark as watched" }, move || store::set_watched(&vs, !all_watched));
+    let started: Vec<Rc<Video>> = videos.iter().filter(|v| v.in_progress()).cloned().collect();
+    if !started.is_empty() {
+        m.add("Remove from Continue watching", move || {
+            for v in &started {
+                store::update_watch(v, |w| w.position = 0.0);
+            }
+        });
+    }
     if single && first.id > 0 {
         match first.kind {
             Kind::Episode => {
