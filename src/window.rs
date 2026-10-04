@@ -161,7 +161,18 @@ fn build(app: &gtk::Application) {
     let mut nav_items = HashMap::new();
     let playlist_box = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let mut last_group = "";
+    // Settings sits at the bottom of the sidebar, on its own.
+    let mut settings_button = None;
     for s in sections.iter().filter(|s| s.nav) {
+        if s.id == "settings" {
+            let (button, label) = nav_button(s.icon, s.title, s.description);
+            label.add_css_class("compact-hide");
+            button.add_css_class("nav-settings");
+            button.connect_clicked(|_| navigate("settings"));
+            nav_items.insert(s.id.to_string(), button.clone());
+            settings_button = Some(button);
+            continue;
+        }
         if s.group != last_group {
             let g = widgets::label(&s.group.to_uppercase(), "nav-group");
             g.add_css_class("compact-hide");
@@ -191,6 +202,9 @@ fn build(app: &gtk::Application) {
         .child(&list)
         .build();
     nav.append(&nav_scroll);
+    if let Some(b) = &settings_button {
+        nav.append(b);
+    }
 
     let footer = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     footer.add_css_class("nav-footer");

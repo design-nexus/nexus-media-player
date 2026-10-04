@@ -118,6 +118,10 @@ window.media-window .settings-navigation button.nav-collapse:hover image {
   font-weight: 600;
 }
 
+.settings-navigation button.nav-settings {
+  margin-bottom: 4px;
+}
+
 .settings-navigation .nav-footer {
   margin-top: 8px;
   padding-top: 10px;
