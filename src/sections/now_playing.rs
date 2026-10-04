@@ -19,6 +19,8 @@ const SECS_PER_UNIT: f64 = 0.3;
 const HIDE_AFTER: Duration = Duration::from_millis(2500);
 
 thread_local! {
+    /// Fill the window, cropping the picture, instead of fitting inside it.
+    static FILL: Cell<bool> = const { Cell::new(false) };
     static FLASH: RefCell<Option<(gtk::Label, Rc<Cell<u32>>)>> = const { RefCell::new(None) };
 }
 
@@ -147,6 +149,39 @@ fn chapter_menu(content: &gtk::Box, pop: &gtk::Popover) {
             pop.popdown();
         }));
     }
+}
+
+fn picture_menu(content: &gtk::Box, pop: &gtk::Popover, picture: &gtk::Picture) {
+    content.append(&widgets::label("SHAPE", "popover-heading"));
+    let now = player::aspect();
+    for (ratio, label) in [("no", "As made"), ("16:9", "16:9"), ("4:3", "4:3"), ("2.35:1", "2.35:1"), ("1:1", "Square")] {
+        let pop = pop.clone();
+        let picked = if ratio == "no" { now == "no" || now == "-1" } else { now == ratio };
+        content.append(&choice(label, "", picked, move || {
+            player::set_aspect(ratio);
+            pop.popdown();
+        }));
+    }
+    content.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+    let fill = FILL.with(|f| f.get());
+    let (pop2, pic) = (pop.clone(), picture.clone());
+    content.append(&choice("Fill the window", "crop", fill, move || {
+        FILL.with(|f| f.set(!fill));
+        pic.set_content_fit(if fill { gtk::ContentFit::Contain } else { gtk::ContentFit::Cover });
+        pop2.popdown();
+    }));
+    let turn = player::rotation();
+    let p = pop.clone();
+    content.append(&choice("Turn right", &format!("{turn}°"), turn != 0, move || {
+        player::set_rotation(turn + 90);
+        p.popdown();
+    }));
+    let de = player::deinterlace();
+    let p = pop.clone();
+    content.append(&choice("Deinterlace", "", de, move || {
+        player::set_deinterlace(!de);
+        p.popdown();
+    }));
 }
 
 fn speed_menu(content: &gtk::Box, pop: &gtk::Popover) {
@@ -480,6 +515,8 @@ pub fn build(page: &Page) {
     row.append(&speed_label);
     let chapters = menu_button("view-list-ordered-symbolic", "Chapters (Page Up and Page Down)", chapter_menu);
     chapters.set_visible(false);
+    let pic = picture.clone();
+    let shape = menu_button("video-display-symbolic", "Picture: shape, fill, turn", move |c, p| picture_menu(c, p, &pic));
     let speed = menu_button("nmp-speed-symbolic", "Speed ([ and ])", speed_menu);
     let audio = menu_button("nmp-audio-track-symbolic", "Sound: track, sync and night mode (A)", audio_menu);
     let subs = menu_button("nmp-subtitles-symbolic", "Subtitles (S)", subtitle_menu);
@@ -490,6 +527,7 @@ pub fn build(page: &Page) {
     close.add_css_class("osd-button");
     close.set_focus_on_click(false);
     row.append(&chapters);
+    row.append(&shape);
     row.append(&speed);
     row.append(&audio);
     row.append(&subs);
@@ -541,7 +579,8 @@ pub fn build(page: &Page) {
                 player::set_sub_pos(100.0);
                 return;
             };
-            let shown_h = vh as f64 * (w / vw as f64).min(h / vh as f64);
+            let (sx, sy) = (w / vw as f64, h / vh as f64);
+            let shown_h = vh as f64 * if FILL.with(|f| f.get()) { sx.max(sy) } else { sx.min(sy) };
             // Below 100, mpv drops its bottom margin; keep a little room.
             let overlap = (h + shown_h) / 2.0 - top;
             let lift = if overlap > 0.0 { overlap + 16.0 } else { 0.0 };
@@ -554,7 +593,7 @@ pub fn build(page: &Page) {
     // Controls fade out while playing and the pointer rests.
     let idle_gen: Rc<Cell<u32>> = Rc::default();
     let over_controls = Rc::new(Cell::new(false));
-    let menus = [chapters.clone(), speed.clone(), audio.clone(), subs.clone()];
+    let menus = [chapters.clone(), shape.clone(), speed.clone(), audio.clone(), subs.clone()];
     let wake: Rc<dyn Fn()> = {
         let (overlay, top, controls, idle_gen, over_controls, place_subs) =
             (overlay.clone(), top.clone(), controls.clone(), idle_gen.clone(), over_controls.clone(), place_subs.clone());

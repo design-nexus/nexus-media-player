@@ -265,7 +265,7 @@ fn options() -> Vec<(String, String)> {
         ("audio-file-auto", "no"),
         ("audio-client-name", "nexus-media-player"),
         ("save-position-on-quit", "no"),
-        ("reset-on-next-file", "speed,sub-delay,audio-delay"),
+        ("reset-on-next-file", "speed,sub-delay,audio-delay,video-aspect-override,video-rotate"),
         ("volume-max", "150"),
     ]
     .iter()
@@ -1256,6 +1256,32 @@ pub fn screenshot() {
         Some(Err(e)) => window::toast(&format!("Couldn't save the frame: {e}")),
         None => {}
     }
+}
+
+/// Picture shape: "no" for the video's own, or "16:9", "4:3", "2.35:1"…
+pub fn aspect() -> String {
+    with_mpv(|m| m.get_str("video-aspect-override")).flatten().unwrap_or_else(|| "no".into())
+}
+
+pub fn set_aspect(ratio: &str) {
+    with_mpv(|m| m.set_str("video-aspect-override", ratio));
+}
+
+/// Clockwise turn in degrees: 0, 90, 180 or 270.
+pub fn rotation() -> i64 {
+    with_mpv(|m| m.get_i64("video-rotate")).flatten().unwrap_or(0)
+}
+
+pub fn set_rotation(degrees: i64) {
+    with_mpv(|m| m.set_i64("video-rotate", degrees.rem_euclid(360)));
+}
+
+pub fn deinterlace() -> bool {
+    with_mpv(|m| m.get_str("deinterlace")).flatten().is_some_and(|s| s == "yes")
+}
+
+pub fn set_deinterlace(on: bool) {
+    with_mpv(|m| m.set_str("deinterlace", if on { "yes" } else { "no" }));
 }
 
 /// The seek bars show the time left (or the length).
