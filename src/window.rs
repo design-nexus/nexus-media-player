@@ -500,27 +500,38 @@ pub const SHORTCUTS: &[(&str, Keys)] = &[
     ),
 ];
 
-/// A window listing every shortcut, in columns.
+/// A window listing every shortcut: a heading and a card of rows for each group.
 pub fn show_shortcuts() {
-    let (dialog, card) = widgets::dialog("Keyboard shortcuts", 860);
-    card.add_css_class("shortcuts");
-    let columns = widgets::hbox(28);
-    for (title, keys) in SHORTCUTS {
-        let col = widgets::vbox(6);
-        col.set_hexpand(true);
-        col.append(&widgets::label(&title.to_uppercase(), "group-title"));
-        for (caps, what) in *keys {
-            let row = widgets::hbox(12);
-            let l = widgets::label(what, "");
-            l.set_hexpand(true);
-            l.set_xalign(0.0);
-            row.append(&l);
-            row.append(&widgets::key_caps(caps));
-            col.append(&row);
+    let (dialog, card) = widgets::dialog("Keyboard shortcuts", 520);
+    let body = widgets::vbox(0);
+    for (i, (title, keys)) in SHORTCUTS.iter().enumerate() {
+        let heading = widgets::label(&title.to_uppercase(), "group-title");
+        heading.set_xalign(0.0);
+        if i == 0 {
+            heading.add_css_class("page-first");
         }
-        columns.append(&col);
+        body.append(&heading);
+        let list = widgets::vbox(0);
+        list.add_css_class("group-list");
+        for (caps, what) in *keys {
+            list.append(&widgets::row(what, "", Some(widgets::key_caps(caps).upcast_ref())));
+        }
+        body.append(&list);
     }
-    card.append(&columns);
+    let scroll = gtk::ScrolledWindow::builder()
+        .hscrollbar_policy(gtk::PolicyType::Never)
+        // Scrolls without a scrollbar, which would cover the key caps.
+        .vscrollbar_policy(gtk::PolicyType::External)
+        .propagate_natural_height(true)
+        .max_content_height(560)
+        .child(&body)
+        .build();
+    card.append(&scroll);
+    let close = gtk::Button::with_label("Close");
+    close.set_halign(gtk::Align::End);
+    let d = dialog.clone();
+    close.connect_clicked(move |_| d.close());
+    card.append(&close);
     dialog.present();
 }
 
